@@ -145,33 +145,4 @@ graph LR
     *   Рекурсивно обходит папку с документами (PDF, MD, TXT).
     *   Отправляет в API.
 
-## 3. План Реализации
 
-1.  **Подготовка окружения:**
-    *   `python3 -m venv venv`
-    *   `pip install google-adk fastapi uvicorn streamlit chromadb`
-    *   `npm install -g n8n`
-
-2.  **Разработка AI Core:**
-    *   Настройка Google ADK и Gemini.
-    *   Реализация RAG (ChromaDB) с поддержкой метаданных.
-    *   API эндпоинты (включая `/analyze_image`).
-    *   Streamlit UI для управления знаниями.
-
-3.  **Разработка CLI:**
-    *   Скрипт импорта email с логикой ролей.
-
-4.  **Настройка n8n:**
-    *   Настройка Python Script Nodes.
-    *   Создание воркфлоу Telegram (с ветками для Text, Voice, Image).
-    *   Создание воркфлоу File Watcher.
-
-## 4. Проверка Требований
-- [x] **Локальный запуск (macOS):** Да.
-- [x] **Без Docker:** Да.
-- [x] **n8n + Python Script:** Используется для оркестрации.
-- [x] **Google ADK:** Логика агентов.
-- [x] **Загрузка Email:** Через CLI.
-- [x] **Редактирование КБ:** Через Streamlit UI.
-- [x] **RAG по Чату:** Сообщения индексируются.
-- [x] **Мультимодальность:** Голос и Картинки обрабатываются Gemini.
