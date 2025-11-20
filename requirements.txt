@@ -2,3 +2,5 @@ pydantic-settings
 loguru
 sqlmodel
 sqlalchemy
+aiosqlite
+greenlet
