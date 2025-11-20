@@ -4,7 +4,7 @@
 
 Решение состоит из локальных компонентов, работающих на macOS. Docker не используется.
 
-1.  **Оркестратор (n8n):** Управляет потоками сообщений от Telegram и файловой системы. Использует **Python Script Nodes** для логики.
+1.  **Telegram Bot (Python):** Отдельное простое приложение. Читает сообщения, сохраняет их и отправляет в AI Core.
 2.  **AI Core (Python Service):** Локальный сервер (FastAPI) + UI (Streamlit). Содержит логику агентов (Google ADK), работу с LLM и Базой Знаний.
 3.  **CLI Tools:** Скрипты для массовой загрузки данных (Email, архивы документов).
 
@@ -12,9 +12,9 @@
 - **SQLite:** Хранение сырых сообщений, логов и метаданных.
 - **Local Vector Store (ChromaDB):** Векторная база знаний (KB). Хранит чанки документов, писем и **сообщений из чата** для RAG.
 - **Local Filesystem:** Хранение медиа-файлов и документов.
-    *   Изображения: `data/media/images/{YYYY}/{MM}/{DD}/{file_id}.jpg`
-    *   Голосовые: `data/media/voice/{YYYY}/{MM}/{DD}/{file_id}.ogg`
-    *   Документы: `data/docs/{filename}`
+
+    *   Голосовые: `data/media/voice/...`
+    *   Документы: `data/docs/...`
 
 ```mermaid
 graph TD
@@ -24,92 +24,52 @@ graph TD
     end
 
     subgraph "Local macOS Environment"
-        n8n["n8n (Node.js)"]
+        TGBot["Telegram Bot"]
         
         subgraph "AI Core (Python)"
-            API[FastAPI Wrapper]
-            UI[Streamlit Admin UI]
-            ADK[Google ADK Agents]
+            API[API Server]
+            UI[Admin UI]
+            AiCore[AI Agents]
             VDB[(Vector DB)]
         end
         
-        CLI[CLI Ingestion Scripts]
+        CLI[CLI]
         DB[(SQLite)]
         FS[File System]
     end
 
-    TG -->|Webhook/Polling| n8n
-    User -->|CLI Load Emails/Docs| CLI
-    User -->|Edit KB| UI
+    TG -->|Polling| TGBot
+    User -->|Load emails/docs| CLI
+    User -->|Edit/View| UI
     
-    n8n -->|Store Messages| DB
-    n8n -->|Save Files| FS
-    n8n -->|HTTP POST /summarize| API
-    n8n -->|HTTP POST /ask| API
-    n8n -->|HTTP POST /ingest| API
-    n8n -->|HTTP POST /analyze_image| API
+    TGBot -->|Store Messages| API
+    TGBot -->|Summarize| API
     
     CLI -->|Direct Ingest| API
     UI -->|Manage| API
     
-    API --> ADK
-    ADK <--> VDB
-    ADK -->|Read Context| DB
+    API --> AiCore
+    AiCore <--> VDB
+    AiCore --> |Store Media| FS
+    AiCore -->|Read Context, Store Data| DB
 ```
 
 ## 2. Детали Компонентов
 
-### 2.1. n8n (Оркестратор)
-**Установка:** `npm install -g n8n`
-**Запуск:** `n8n start`
-**Важно:** Для любой кастомной логики внутри n8n использовать **Python Script Node**.
+### 2.1. Telegram Bot (Python App)
+**Стек:** Python, библиотека `python-telegram-bot` (или `aiogram`).
+**Запуск:** `python bot.py`
 
-#### Детальный флоу: Обработка Telegram
-Логика обработки сообщений разделена на этапы для надежности.
+Простое приложение, которое работает в режиме Long Polling.
 
-```mermaid
-graph LR
-    Trigger[Telegram Trigger] -->|Message| PyRouter[Python Script: Analyze Type]
-    
-    PyRouter -->|Text| IngestText[HTTP: POST /ingest]
-    IngestText --> StoreDB[SQLite: Insert Message]
-    
-    PyRouter -->|Voice| DownloadV[HTTP: Download File]
-    PyRouter -->|Image| DownloadI[HTTP: Download File]
-    
-    DownloadV --> Transcribe[HTTP: POST /transcribe]
-    Transcribe --> IngestVoice[HTTP: POST /ingest]
-    IngestVoice --> StoreDB
-    
-    DownloadI --> AnalyzeImg[HTTP: POST /analyze_image]
-    AnalyzeImg --> IngestImg[HTTP: POST /ingest]
-    IngestImg --> StoreDB
-    
-    StoreDB --> CheckCmd[Python Script: Check Command]
-    CheckCmd -->|/ask| AskAPI[HTTP: POST /ask]
-    CheckCmd -->|/summary| SummAPI[HTTP: POST /summarize]
-    CheckCmd -->|None| End((End))
-    
-    AskAPI --> Reply[Telegram: Send Message]
-    SummAPI --> Reply
-```
 
-**Ноды:**
-1.  **Telegram Trigger:** Получает сообщения (Polling или Webhook).
-2.  **Python Script (Router):** Определяет тип контента (текст, голос, фото).
-3.  **HTTP Request (AI Core):**
-    *   `/transcribe` - Gemini Audio для голоса.
-    *   `/analyze_image` - Gemini Vision для получения описания картинки.
-    *   `/ingest` - **Важно:** Отправляем текст сообщения (или транскрипцию/описание) в Vector DB для RAG.
-    *   `/ask` - если обнаружена команда вопроса.
-    *   `/summarize` - если запрошено саммари (команда `/summary`).
-4.  **SQLite Node:** Сохраняет сырое сообщение (и путь к файлу) в БД `messages` для истории.
 
-#### Флоу: Загрузка Документов (Folder Watcher)
-*   **Trigger:** Local File Trigger (следит за папкой `~/mesh-mind/input_docs`).
-*   **Action:**
-    *   Python Script: Читает файл.
-    *   HTTP Request: `POST /ingest` (отправляет текст/файл в AI Core).
+**Логика работы:**
+1.  **Polling:** Получает обновления (Updates) от Telegram API.
+1.  **Регарует на Команды в чате:**
+    *   Обрабатывает `/ask` и `/summary`, вызывая соответствующие эндпоинты AI Core и отправляя ответ пользователю.
+1.  **Видит все сообщения и медиа в чате, куда добавлен:** Передает сообщения и голосовые сообщения в API чтобы оно уже сохраняло их куда надо
+
 
 ### 2.2. AI Core (Google ADK + Python)
 **Стек:** Python 3.10+, Google ADK, FastAPI, Streamlit, ChromaDB.
@@ -117,21 +77,19 @@ graph LR
 **Компоненты:**
 
 1.  **API Server (FastAPI):**
-    *   `POST /summarize`: Запускает Summarizer Agent.
-    *   `POST /ask`: Запускает QA Agent.
-    *   `POST /ingest`: Принимает текст/файлы + метаданные (source, author, timestamp). Создает эмбеддинги, сохраняет в ChromaDB.
-    *   `POST /transcribe`: Использование Gemini Audio (Multimodal) для транскрибации.
-    *   `POST /analyze_image`: Использование Gemini Vision для описания изображений.
+    Система предоставляет набор универсальных точек входа: одна отвечает за создание кратких пересказов, другая — за получение ответов на вопросы, третья — за приём и структурированное сохранение новых данных, а также есть отдельные эндпоинты для обработки аудио (с поддержкой украинского, русского и английского языков). Всё это формирует единый интерфейс для работы с разнородной информацией и запуска соответствующих интеллектуальных процессов.
+
+    **Примечание:** Конкретные спецификации API эндпоинтов будут описаны в отдельном документе.
 
 2.  **Admin UI (Streamlit):**
     *   Позволяет просматривать содержимое Vector DB (чанков).
     *   Поиск по базе знаний (для проверки ответов).
     *   Редактирование/Удаление устаревших записей.
     *   Ручная загрузка документов.
+    *   Тегирование документов (например, "Законы", "Регламенты").
 
 3.  **Agents (ADK):**
-    *   **Summarizer:** Читает `messages` из SQLite (или последние N сообщений), генерирует отчет.
-    *   **QA Bot:** RAG (Retrieval Augmented Generation) по ChromaDB. Ищет ответы и в документах, и в истории чата.
+    *   Здесь некоторое количество агентов, которые будут выполнять продуктовые задачи
 
 ### 2.3. CLI Tools (Загрузка данных)
 Скрипты на Python для начальной инициализации и массовой загрузки.
@@ -140,7 +98,7 @@ graph LR
     *   Читает `.eml` файлы.
     *   Парсит структуру (From, Subject, Body).
     *   **Определяет роль:** Client vs Employee (по домену email).
-    *   Вызывает API `/ingest` (или использует общую библиотеку) для сохранения в ChromaDB с метаданными.
+    *   Вызывает API Server для сохранения в ChromaDB с метаданными.
 2.  `ingest_docs.py`:
     *   Рекурсивно обходит папку с документами (PDF, MD, TXT).
     *   Отправляет в API.
