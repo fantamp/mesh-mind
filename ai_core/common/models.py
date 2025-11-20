@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from sqlmodel import SQLModel, Field
 from sqlalchemy import JSON
@@ -10,7 +10,7 @@ class Message(SQLModel, table=True):
     author_id: str
     author_name: str
     content: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     media_path: Optional[str] = None
     media_type: Optional[str] = None # voice, document
 

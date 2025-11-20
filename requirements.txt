@@ -6,3 +6,5 @@ aiosqlite
 greenlet
 chromadb
 google-generativeai
+pytest
+pytest-asyncio

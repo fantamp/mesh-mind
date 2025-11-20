@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 from ai_core.common.config import settings
@@ -14,7 +14,7 @@ def _get_storage_path(file_type: str) -> str:
     base_path = settings.MEDIA_PATH # defaults to data/media
     
     if file_type == "voice":
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return os.path.join(base_path, "voice", now.strftime("%Y"), now.strftime("%m"), now.strftime("%d"))
     elif file_type == "doc":
         # Assuming docs go to a sibling directory or specific docs directory

@@ -7,6 +7,9 @@ sys.path.append(os.getcwd())
 
 from ai_core.storage import init_db, save_message, get_messages, Message, save_file
 
+import pytest
+
+@pytest.mark.asyncio
 async def test_storage():
     print("1. Initializing Database...")
     await init_db()

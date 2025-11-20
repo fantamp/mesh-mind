@@ -1,5 +1,5 @@
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from sqlmodel import Field, SQLModel, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -33,7 +33,7 @@ class Message(SQLModel, table=True):
     chat_id: str = Field(index=True)
     author_name: str
     content: str
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     media_path: Optional[str] = None
     media_type: Optional[str] = None
 
@@ -42,7 +42,7 @@ class ChatState(SQLModel, table=True):
     
     chat_id: str = Field(primary_key=True)
     last_summary_message_id: Optional[str] = None
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class DocumentMetadata(SQLModel, table=True):
     __tablename__ = "documents"
@@ -50,7 +50,7 @@ class DocumentMetadata(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     filename: str
     file_path: str
-    upload_date: datetime = Field(default_factory=datetime.utcnow)
+    upload_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Functions
 
@@ -85,11 +85,11 @@ async def update_chat_state(chat_id: str, last_msg_id: str) -> ChatState:
         state = result.scalars().first()
         
         if not state:
-            state = ChatState(chat_id=chat_id, last_summary_message_id=last_msg_id, updated_at=datetime.utcnow())
+            state = ChatState(chat_id=chat_id, last_summary_message_id=last_msg_id, updated_at=datetime.now(timezone.utc))
             session.add(state)
         else:
             state.last_summary_message_id = last_msg_id
-            state.updated_at = datetime.utcnow()
+            state.updated_at = datetime.now(timezone.utc)
             session.add(state)
             
         await session.commit()
