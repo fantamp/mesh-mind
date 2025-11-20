@@ -4,3 +4,5 @@ sqlmodel
 sqlalchemy
 aiosqlite
 greenlet
+chromadb
+google-generativeai
