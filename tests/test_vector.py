@@ -15,11 +15,16 @@ def test_vector_db():
     import os
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     
+    import ai_core.rag.vector_db
+    
+    if api_key and not api_key.startswith("dummy"):
+        # Ensure the module has the key (it might have been imported before env was loaded)
+        ai_core.rag.vector_db.GEMINI_API_KEY = api_key
+        print(f"Using Real API Key: {api_key[:5]}...")
+
     if not api_key or api_key.startswith("dummy"):
         print("WARNING: No API key found. Using MockEmbeddingService for testing.")
         # Monkey patch the embedding service in the instance we are about to create
-        # Or better, let's just mock it after creation or inject it if we refactor.
-        # Since VectorDB creates it internally, we'll mock the class in the module.
         
         class MockEmbeddingService:
             def __init__(self, api_key): pass
@@ -31,15 +36,11 @@ def test_vector_db():
                 import random
                 return [random.random() for _ in range(768)]
 
-        import ai_core.rag.vector_db
         ai_core.rag.vector_db.EmbeddingService = MockEmbeddingService
-        # We also need to bypass the api key check in VectorDB.__init__ if it enforces it
-        # The current implementation of EmbeddingService raises ValueError if no key.
-        # But our Mock doesn't.
-        # However, VectorDB passes the key from env.
-        # Let's just set a dummy key so VectorDB doesn't crash before reaching our Mock
-        import os
-        os.environ["GEMINI_API_KEY"] = "dummy"
+        
+        # Set dummy key to avoid ValueError in VectorDB if it checks before Mock (though we patched class)
+        # But VectorDB passes GEMINI_API_KEY to constructor.
+        ai_core.rag.vector_db.GEMINI_API_KEY = "dummy"
 
     db = VectorDB()
     

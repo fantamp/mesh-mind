@@ -15,7 +15,9 @@ def test_common_lib():
     print(f"   LOG_LEVEL: {settings.LOG_LEVEL}")
     print(f"   GOOGLE_API_KEY: {'*' * len(settings.GOOGLE_API_KEY) if settings.GOOGLE_API_KEY else 'MISSING'}")
     
-    assert settings.GOOGLE_API_KEY == "dummy_key_for_testing", "API Key mismatch"
+    assert settings.GOOGLE_API_KEY, "API Key is missing"
+    if settings.GOOGLE_API_KEY == "dummy_key_for_testing":
+        print("WARNING: Using dummy API key")
     
     # 2. Test Logging
     print("\n2. Testing Logging (Check console output below):")
