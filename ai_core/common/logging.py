@@ -19,3 +19,15 @@ def setup_logging():
     # logger.add(f"logs/mesh_mind.log", rotation="10 MB", level=settings.LOG_LEVEL)
 
     logger.info(f"Logging initialized. Level: {settings.LOG_LEVEL}")
+
+def get_logger(name: str):
+    """
+    Возвращает logger с указанным именем.
+    
+    Args:
+        name: Имя модуля
+        
+    Returns:
+        Logger instance
+    """
+    return logger.bind(name=name)

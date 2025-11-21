@@ -14,6 +14,11 @@
     - [x] Implement `TranscriptionService` class <!-- id: 1 -->
     - [x] Add dependencies (`tenacity`) <!-- id: 2 -->
     - [x] Manual verification script <!-- id: 3 -->
+- [ ] **Ingestion Service**
+    - [x] File Parsers (Text, PDF, EML, Audio)
+    - [x] Chunking Logic
+    - [x] CLI Tool
+    - [x] Tests
 - [ ] **Telegram Bot**
 - [ ] **AI Agents**
 - [ ] **CLI Tools**

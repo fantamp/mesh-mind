@@ -5,9 +5,7 @@ import google.generativeai as genai
 from typing import List, Dict, Optional, Any
 from loguru import logger
 
-# Assuming we might have a settings module later, but for now using env vars or defaults
-CHROMA_PATH = os.getenv("CHROMA_PATH", "data/vector_store")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+from ai_core.common.config import settings
 
 class EmbeddingService:
     def __init__(self, api_key: str):
@@ -48,13 +46,15 @@ class EmbeddingService:
             raise
 
 class VectorDB:
-    def __init__(self, persist_directory: str = CHROMA_PATH):
+    def __init__(self, persist_directory: str = None):
+        if persist_directory is None:
+            persist_directory = settings.CHROMA_PATH
         self.client = chromadb.PersistentClient(path=persist_directory)
         self.collection_name = "mesh_mind_v1"
         
         # We need a custom embedding function wrapper for Chroma
         # Chroma expects an object with `__call__` that takes input: Documents -> Output: Embeddings
-        self.embedding_service = EmbeddingService(api_key=GEMINI_API_KEY)
+        self.embedding_service = EmbeddingService(api_key=settings.GOOGLE_API_KEY)
         
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
