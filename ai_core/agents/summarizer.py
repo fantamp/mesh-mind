@@ -80,7 +80,7 @@ def summarize(messages: List[Message]) -> str:
     
     # Преобразуем сообщения в текстовый формат
     conversation_text = "\n".join([
-        f"[{msg.timestamp.strftime('%Y-%m-%d %H:%M')}] {msg.author_name}: {msg.content}"
+        f"[{msg.created_at.strftime('%Y-%m-%d %H:%M')}] {msg.author_name}: {msg.content}"
         for msg in messages
     ])
     
@@ -111,10 +111,14 @@ def summarize(messages: List[Message]) -> str:
             loop = None
             
         if loop and loop.is_running():
+            logger.debug("Running session creation in thread pool")
             with ThreadPoolExecutor() as executor:
                 executor.submit(run_in_thread).result()
         else:
+            logger.debug("Running session creation directly")
             run_in_thread()
+        
+        logger.debug(f"Session {session_id} created. Preparing user content.")
 
         user_content = types.Content(
             role='user',
@@ -122,12 +126,14 @@ def summarize(messages: List[Message]) -> str:
         )
         
         response_text = None
+        logger.debug("Calling runner.run()...")
         # Вызываем runner.run() - это синхронный метод, который внутри запускает event loop
         for event in _summarizer_runner.run(
             user_id=user_id,
             session_id=session_id,
             new_message=user_content
         ):
+            logger.debug(f"Received event: {type(event)}")
             if event.is_final_response() and event.content and event.content.parts:
                 response_text = event.content.parts[0].text
                 break
@@ -139,5 +145,8 @@ def summarize(messages: List[Message]) -> str:
         return response_text
         
     except Exception as e:
-        logger.error(f"Ошибка при генерации саммари: {e}")
+        logger.error(f"Ошибка при генерации саммари ({type(e).__name__}): {e}")
+        print(f"DEBUG ERROR in summarizer: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         raise

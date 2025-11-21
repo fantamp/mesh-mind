@@ -5,7 +5,7 @@ Unit-тесты для Summarizer Agent
 import pytest
 from datetime import datetime, timezone
 from ai_core.agents.summarizer import summarize
-from ai_core.common.models import Message
+from ai_core.storage.db import Message
 
 
 def test_summarize_with_messages():
@@ -13,24 +13,24 @@ def test_summarize_with_messages():
     messages = [
         Message(
             source="test",
-            author_id="user1",
+            chat_id="test_chat",
             author_name="Alice",
             content="Привет! Как дела?",
-            timestamp=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc)
         ),
         Message(
             source="test",
-            author_id="user2",
+            chat_id="test_chat",
             author_name="Bob",
             content="Отлично! Работаю над новым проектом.",
-            timestamp=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc)
         ),
         Message(
             source="test",
-            author_id="user1",
+            chat_id="test_chat",
             author_name="Alice",
             content="Круто! Расскажи подробнее.",
-            timestamp=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
     ]
     
@@ -55,24 +55,24 @@ def test_summarize_multilingual():
     messages = [
         Message(
             source="test",
-            author_id="user1",
+            chat_id="test_chat",
             author_name="John",
             content="Hello! How are you?",
-            timestamp=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc)
         ),
         Message(
             source="test",
-            author_id="user2",
+            chat_id="test_chat",
             author_name="Юрий",
             content="Привет! Все отлично, спасибо!",
-            timestamp=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc)
         ),
         Message(
             source="test",
-            author_id="user3",
+            chat_id="test_chat",
             author_name="Олександр",
             content="Привіт усім! Що нового?",
-            timestamp=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
     ]
     

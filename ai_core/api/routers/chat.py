@@ -6,6 +6,8 @@ from ai_core.api.dependencies import get_db_session, get_vector_db
 from ai_core.api.models import SummarizeRequest, SummarizeResponse, AskRequest, AskResponse
 from ai_core.storage.db import get_chat_state, get_messages, update_chat_state
 from ai_core.rag.vector_db import VectorDB
+from ai_core.agents.summarizer import summarize as agent_summarize
+from ai_core.agents.qa import ask_question as agent_ask
 
 router = APIRouter()
 
@@ -28,10 +30,15 @@ async def summarize(
     if not messages:
         return SummarizeResponse(summary="No new messages to summarize.")
         
-    # 3. Mock Summarizer Agent
-    # In real implementation: agent.run(messages)
-    msg_texts = [m.content for m in messages]
-    summary_text = f"[MOCK SUMMARY] Summary of {len(messages)} messages: " + " ".join(msg_texts[:3]) + "..."
+    # 3. Real Summarizer Agent
+    try:
+        from loguru import logger
+        logger.info(f"Calling agent_summarize for {len(messages)} messages")
+        summary_text = agent_summarize(messages)
+        logger.info("agent_summarize completed successfully")
+    except Exception as e:
+        logger.error(f"agent_summarize failed: {e}")
+        summary_text = f"Error generating summary: {e}"
     
     # 4. Update State
     # We take the ID of the most recent message (first in list because get_messages orders by desc)
@@ -45,20 +52,14 @@ async def ask(
     request: AskRequest,
     vector_db: VectorDB = Depends(get_vector_db)
 ):
-    # 1. Mock QA Agent / RAG
-    # Search Vector Store
-    results = vector_db.search(request.query, n_results=3)
-    
-    # Extract sources
-    sources = []
-    if results and results.get('documents'):
-        for i, doc_list in enumerate(results['documents']):
-            for j, doc in enumerate(doc_list):
-                meta = results['metadatas'][i][j]
-                source_info = f"{meta.get('source', 'unknown')} ({meta.get('type', 'unknown')})"
-                sources.append(source_info)
-    
-    # Generate Answer (Mock)
-    answer = f"[MOCK ANSWER] Based on your query '{request.query}', here is some information found in the knowledge base."
+    # 1. Real QA Agent
+    try:
+        # We use a fixed user_id for now or derive from request if available
+        # For MVP, we can use "telegram_user"
+        answer = agent_ask(request.query, user_id="telegram_user")
+        sources = ["Sources are cited in the answer."]
+    except Exception as e:
+        answer = f"Error generating answer: {e}"
+        sources = []
     
     return AskResponse(answer=answer, sources=sources)

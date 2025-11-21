@@ -29,9 +29,13 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(ingest.router, tags=["Ingestion"])
-app.include_router(chat.router, tags=["Chat & QA"])
+app.include_router(ingest.router, prefix="/api", tags=["Ingestion"])
+app.include_router(chat.router, prefix="/api", tags=["Chat & QA"])
 
 @app.get("/")
 async def root():
+    return {"message": "Mesh Mind AI Core API is running"}
+
+@app.get("/api/")
+async def api_root():
     return {"message": "Mesh Mind AI Core API is running"}

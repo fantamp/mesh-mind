@@ -16,3 +16,5 @@ tenacity
 pypdf
 google-adk>=0.1.0
 tenacity
+python-telegram-bot>=20.0
+python-dotenv

@@ -9,6 +9,7 @@ from ai_core.api.models import IngestResponse
 from ai_core.storage.db import save_message, Message, save_document_metadata, DocumentMetadata
 from ai_core.storage.fs import save_file
 from ai_core.rag.vector_db import VectorDB
+from ai_core.common.transcription import TranscriptionService
 
 router = APIRouter()
 
@@ -37,8 +38,14 @@ async def ingest(
         content = await file.read()
         file_path = save_file(content, file.filename, "voice")
         
-        # Mock Transcription
-        transcription = f"[MOCK TRANSCRIPTION] Audio file {file.filename} processed."
+        # Real Transcription
+        try:
+            transcription_service = TranscriptionService()
+            transcription = await transcription_service.transcribe(file_path)
+        except Exception as e:
+            logger.error(f"Transcription failed: {e}")
+            transcription = f"[TRANSCRIPTION FAILED] Audio file {file.filename} processed but transcription failed."
+        
         text = transcription # Update text with transcription
         
         # Save Message

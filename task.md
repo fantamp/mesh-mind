@@ -19,7 +19,9 @@
     - [x] Chunking Logic
     - [x] CLI Tool
     - [x] Tests
-- [ ] **Telegram Bot**
+- [x] **Telegram Bot** <!-- id: 9 -->
+    - [x] Implement `telegram_bot/main.py` <!-- id: 10 -->
+    - [x] Implement `tests/test_telegram_bot.py` <!-- id: 11 -->
 - [ ] **AI Agents**
     - [x] QA Agent Implementation <!-- id: 4 -->
         - [x] Implement `qa.py` with ADK <!-- id: 5 -->
