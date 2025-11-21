@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Models
     GEMINI_MODEL_FAST: str = "gemini-2.5-flash"
-    GEMINI_MODEL_SMART: str = "gemini-2.5-pro-exp"
+    GEMINI_MODEL_SMART: str = "gemini-2.5-pro"
     
     # Company
     COMPANY_DOMAINS: List[str] = []
