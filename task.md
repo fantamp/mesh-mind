@@ -21,4 +21,9 @@
     - [x] Tests
 - [ ] **Telegram Bot**
 - [ ] **AI Agents**
+    - [x] QA Agent Implementation <!-- id: 4 -->
+        - [x] Implement `qa.py` with ADK <!-- id: 5 -->
+        - [x] Implement `search_knowledge_base` tool <!-- id: 6 -->
+        - [x] Tests for QA Agent <!-- id: 7 -->
+        - [x] Manual QA Test Script <!-- id: 8 -->
 - [ ] **CLI Tools**

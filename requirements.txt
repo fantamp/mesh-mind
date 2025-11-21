@@ -14,4 +14,5 @@ python-multipart
 httpx
 tenacity
 pypdf
-google-adk
+google-adk>=0.1.0
+tenacity

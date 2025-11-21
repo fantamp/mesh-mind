@@ -94,13 +94,27 @@ def summarize(messages: List[Message]) -> str:
     user_id = "system"
 
     try:
+        from concurrent.futures import ThreadPoolExecutor
+        
         # Явно создаем сессию асинхронно перед использованием runner'а
-        # Это необходимо, так как Runner.run() (синхронный) ожидает, что сессия уже существует
-        asyncio.run(_session_service.create_session(
-            app_name="agents",
-            user_id=user_id,
-            session_id=session_id
-        ))
+        # Если мы уже в event loop (например, в тестах), запускаем в отдельном потоке
+        def run_in_thread():
+            asyncio.run(_session_service.create_session(
+                app_name="agents",
+                user_id=user_id,
+                session_id=session_id
+            ))
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+            
+        if loop and loop.is_running():
+            with ThreadPoolExecutor() as executor:
+                executor.submit(run_in_thread).result()
+        else:
+            run_in_thread()
 
         user_content = types.Content(
             role='user',
