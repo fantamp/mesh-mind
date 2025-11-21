@@ -39,3 +39,28 @@ This is a Streamlit application that allows administrators to manage the Knowled
 -   [ ] Can search for a phrase and see relevant chunks.
 -   [ ] Can ask a question in the Playground and get an answer.
 -   [ ] **Manual Test:** Open `http://localhost:8501`, upload a PDF, ask a question about it.
+
+## 5. Дополнительные ресурсы
+
+### Streamlit
+-   [Официальная документация](https://docs.streamlit.io/) — главный источник информации по Streamlit
+-   [API Reference](https://docs.streamlit.io/develop/api-reference) — полный справочник по всем компонентам
+-   [st.file_uploader](https://docs.streamlit.io/develop/api-reference/widgets/st.file_uploader) — документация по загрузке файлов
+-   [st.chat_input & st.chat_message](https://docs.streamlit.io/develop/api-reference/chat) — компоненты для создания chat UI
+-   [Getting Started Tutorial](https://docs.streamlit.io/get-started) — быстрый старт
+-   [Multipage Apps](https://docs.streamlit.io/develop/concepts/multipage-apps) — создание приложений с несколькими страницами
+-   [Gallery](https://streamlit.io/gallery) — примеры готовых приложений для вдохновения
+
+**Ключевые компоненты для Admin UI:**
+-   `st.file_uploader()` — для загрузки файлов
+-   `st.dataframe()` или `st.table()` — для отображения таблиц с документами
+-   `st.text_input()` — для поиска и тегирования
+-   `st.chat_input()` и `st.chat_message()` — для Playground/Chat интерфейса
+-   `st.sidebar` — для навигации между страницами
+
+### requests (для HTTP-запросов к AI Core API)
+-   [Официальная документация](https://requests.readthedocs.io/) — библиотека для HTTP-запросов
+-   [Quickstart Guide](https://requests.readthedocs.io/en/latest/user/quickstart/) — основные примеры использования
+-   Текущая версия: **2.32.5** (поддерживает Python 3.9+)
+
+**Примечание:** Если нужна асинхронность, можно использовать `httpx` вместо `requests`.
