@@ -5,8 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+# sys.path hack removed
 
 from ai_core.rag.vector_db import VectorDB
 
@@ -96,5 +95,4 @@ def test_vector_db():
         # ChromaDB should return them if they match filter.
         pass
 
-if __name__ == "__main__":
-    test_vector_db()
+# Main block removed

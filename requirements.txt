@@ -8,3 +8,7 @@ chromadb
 google-generativeai
 pytest
 pytest-asyncio
+fastapi
+uvicorn
+python-multipart
+httpx

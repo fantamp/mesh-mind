@@ -1,8 +1,7 @@
 import sys
 import os
 
-# Add project root to python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+# sys.path hack removed
 
 from ai_core.common import settings, setup_logging, Message, Document
 from loguru import logger
@@ -46,5 +45,4 @@ def test_common_lib():
     
     print("\n--- Verification Successful ---")
 
-if __name__ == "__main__":
-    test_common_lib()
+# Main block removed

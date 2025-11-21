@@ -1,9 +1,6 @@
 import asyncio
 import os
-import sys
-
-# Add project root to python path
-sys.path.append(os.getcwd())
+# sys.path hack removed
 
 from ai_core.storage import init_db, save_message, get_messages, Message, save_file
 
@@ -48,5 +45,4 @@ async def test_storage():
 
     print("\nSUCCESS: All storage tests passed!")
 
-if __name__ == "__main__":
-    asyncio.run(test_storage())
+# Main block removed
