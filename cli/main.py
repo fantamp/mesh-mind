@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 CLI-инструмент для bulk-импорта данных в Mesh Mind.
 
