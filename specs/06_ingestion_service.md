@@ -27,5 +27,3 @@ This module is responsible for parsing various file formats (PDF, MD, TXT, EML) 
 -   [ ] PDF parser extracts text from a sample PDF.
 -   [ ] EML parser correctly identifies "Client" vs "Employee" based on domain.
 -   [ ] Chunker splits a long text into overlapping segments.
--   [ ] CLI script successfully sends data to the running API.
--   [ ] **Manual Test:** Run `python cli/ingest_docs.py --path ./data/sample_docs` and verify they appear in ChromaDB (via Admin UI or script).
