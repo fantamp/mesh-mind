@@ -80,7 +80,7 @@ def summarize(messages: List[Message]) -> str:
     
     # Преобразуем сообщения в текстовый формат
     conversation_text = "\n".join([
-        f"[{msg.created_at.strftime('%Y-%m-%d %H:%M')}] {msg.author_name}: {msg.content}"
+        f"[{msg.timestamp.strftime('%Y-%m-%d %H:%M')}] {msg.author_name}: {msg.content}"
         for msg in messages
     ])
     

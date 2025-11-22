@@ -28,4 +28,10 @@
         - [x] Implement `search_knowledge_base` tool <!-- id: 6 -->
         - [x] Tests for QA Agent <!-- id: 7 -->
         - [x] Manual QA Test Script <!-- id: 8 -->
+- [ ] **Admin UI**
+    - [x] Add `streamlit` dependency
+    - [x] Implement `ai_core/ui/main.py` (Home)
+    - [x] Implement `ai_core/ui/pages/1_Knowledge_Base.py`
+    - [x] Implement `ai_core/ui/pages/2_Chat.py`
+    - [x] Verify UI
 - [ ] **CLI Tools**
