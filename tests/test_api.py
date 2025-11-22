@@ -8,18 +8,23 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ai_core.api.main import app
 from ai_core.api.dependencies import get_vector_db, MockVectorDB
+from ai_core.storage.db import init_db, engine
+from sqlmodel import SQLModel
 
 # Override dependency to ensure we use MockVectorDB during tests if not already
 app.dependency_overrides[get_vector_db] = lambda: MockVectorDB()
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    with TestClient(app) as c:
+        yield c
 
-def test_read_main():
+def test_read_main(client):
     response = client.get("/api/")
     assert response.status_code == 200
     assert response.json() == {"message": "Mesh Mind AI Core API is running"}
 
-def test_ingest_text():
+def test_ingest_text(client):
     response = client.post(
         "/api/ingest",
         data={
@@ -31,7 +36,7 @@ def test_ingest_text():
     assert response.json()["status"] == "ok"
     assert "id" in response.json()
 
-def test_ask():
+def test_ask(client):
     response = client.post(
         "/api/ask",
         json={"query": "What is this?"}
@@ -40,7 +45,7 @@ def test_ask():
     assert "answer" in response.json()
     assert "sources" in response.json()
 
-def test_summarize():
+def test_summarize(client):
     response = client.post(
         "/api/summarize",
         json={"chat_id": "123", "limit": 5}

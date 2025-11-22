@@ -16,7 +16,7 @@ from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core.exceptions import ResourceExhausted, InternalServerError, ServiceUnavailable
 # Импортируем исключение ADK для retry
-from google.adk.models.google_llm import _ResourceExhaustedError
+
 
 from ai_core.common.config import settings
 from ai_core.common.models import Message
@@ -54,7 +54,7 @@ _summarizer_runner = Runner(
         ResourceExhausted, 
         InternalServerError, 
         ServiceUnavailable,
-        _ResourceExhaustedError,
+
         Exception # ADK может оборачивать ошибки, поэтому ловим Exception и проверяем сообщение если нужно, но пока доверимся типам
     )),
     reraise=True

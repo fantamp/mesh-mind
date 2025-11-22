@@ -8,6 +8,7 @@ from ai_core.storage.db import get_chat_state, get_messages, update_chat_state
 from ai_core.rag.vector_db import VectorDB
 from ai_core.agents.summarizer import summarize as agent_summarize
 from ai_core.agents.qa import ask_question as agent_ask
+from ai_core.common.models import Message as CommonMessage
 
 router = APIRouter()
 
@@ -34,7 +35,22 @@ async def summarize(
     try:
         from loguru import logger
         logger.info(f"Calling agent_summarize for {len(messages)} messages")
-        summary_text = agent_summarize(messages)
+        
+        # Convert DB messages to Common messages
+        common_messages = [
+            CommonMessage(
+                id=msg.id,
+                source=msg.source,
+                author_id=msg.chat_id, # Using chat_id as author_id for now
+                author_name=msg.author_name,
+                content=msg.content,
+                timestamp=msg.created_at,
+                media_path=msg.media_path,
+                media_type=msg.media_type
+            ) for msg in messages
+        ]
+        
+        summary_text = agent_summarize(common_messages)
         logger.info("agent_summarize completed successfully")
     except Exception as e:
         logger.error(f"agent_summarize failed: {e}")
