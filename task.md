@@ -34,4 +34,10 @@
     - [x] Implement `ai_core/ui/pages/1_Knowledge_Base.py`
     - [x] Implement `ai_core/ui/pages/2_Chat.py`
     - [x] Verify UI
-- [ ] **CLI Tools**
+- [x] **CLI Tools**
+    - [x] Изучить документацию Typer
+    - [x] Создать `cli/main.py` с командой `ingest`
+    - [x] Добавить зависимости (`typer`, `tqdm`)
+    - [x] Создать тесты `tests/test_cli.py`
+    - [x] Manual verification (через walkthrough)
+    - [x] Запустить `pytest .`
