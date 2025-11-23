@@ -13,7 +13,7 @@ sys.path.append(project_root)
 
 from datetime import datetime, timezone, timedelta
 from ai_core.agents.summarizer import summarize
-from ai_core.common.models import Message
+from ai_core.common.models import DomainMessage
 
 
 def create_test_messages():
@@ -21,70 +21,70 @@ def create_test_messages():
     base_time = datetime.now(timezone.utc)
     
     messages = [
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user1",
             author_name="Сергій",
             content="Привіт всім! Сьогодні хочу обговорити наш новий проект.",
             timestamp=base_time
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user2",
             author_name="Алексей",
             content="Привет! Да, давай обсудим. Какие основные задачи?",
             timestamp=base_time + timedelta(minutes=1)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user3",
             author_name="Kate",
             content="Hi everyone! I think we should focus on the AI summarization feature first.",
             timestamp=base_time + timedelta(minutes=2)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user1",
             author_name="Сергій",
             content="Так, згоден. Це пріоритет номер один. Нам потрібно використовувати Gemini API.",
             timestamp=base_time + timedelta(minutes=3)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user2",
             author_name="Алексей",
             content="Отлично! Я могу взять на себя интеграцию с API. Какие еще задачи?",
             timestamp=base_time + timedelta(minutes=5)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user3",
             author_name="Kate",
             content="We also need to handle errors and implement retry logic. That's critical.",
             timestamp=base_time + timedelta(minutes=7)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user1",
             author_name="Сергій",
             content="Добре, давайте розділимо завдання: API інтеграція - Олексій, retry логіка - Kate, тести - я.",
             timestamp=base_time + timedelta(minutes=10)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user2",
             author_name="Алексей",
             content="Договорились! Когда дедлайн?",
             timestamp=base_time + timedelta(minutes=12)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user3",
             author_name="Kate",
             content="I suggest we complete this by Friday. That gives us 3 days.",
             timestamp=base_time + timedelta(minutes=13)
         ),
-        Message(
+        DomainMessage(
             source="telegram",
             author_id="user1",
             author_name="Сергій",

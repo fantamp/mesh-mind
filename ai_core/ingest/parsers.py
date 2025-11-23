@@ -173,7 +173,15 @@ class AudioParser(BaseParser):
         logger.info(f"Parsing audio file: {file_path}")
         
         # Делегируем транскрипцию в TranscriptionService
-        text = self.transcription_service.transcribe_audio(file_path)
+        # Note: transcribe is async, so we need to run it synchronously here
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        text = loop.run_until_complete(self.transcription_service.transcribe(str(file_path)))
         
         metadata = {
             "source": str(file_path),

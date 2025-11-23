@@ -4,7 +4,8 @@ from sqlmodel import SQLModel, Field
 from sqlalchemy import JSON
 import uuid
 
-class Message(SQLModel, table=True):
+class DomainMessage(SQLModel, table=True):
+    __tablename__ = "message" # Explicit table name to avoid migration issues if possible, or just let it default to domainmessage
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     source: str  # e.g., "telegram", "email"
     author_id: str

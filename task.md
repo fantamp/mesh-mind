@@ -10,6 +10,26 @@
 - [ ] **Vector Store**
     - [x] ChromaDB Setup
     - [x] Embeddings
+- [x] **Finalize Kaggle MVP** <!-- id: 10 -->
+    - [x] **Backend & Core** <!-- id: 11 -->
+        - [x] Update `VectorDB` to support `chat_id` in `add_texts` and `search` <!-- id: 12 -->
+        - [x] Update `QA Agent` to use `chat_id` for context isolation <!-- id: 13 -->
+        - [x] Update `Summarizer Agent` to support document summarization by `chat_id` <!-- id: 14 -->
+    - [x] **Telegram Bot** <!-- id: 15 -->
+        - [x] Implement whitelist for `TELEGRAM_ALLOWED_CHAT_IDS` <!-- id: 16 -->
+        - [x] Update `/start` to show authorization status <!-- id: 17 -->
+        - [x] Pass `chat_id` to all API calls <!-- id: 18 -->
+    - [x] **Web UI** <!-- id: 19 -->
+        - [x] Add file deletion to `Knowledge Base` page <!-- id: 20 -->
+        - [x] Add "Summarize Documents" mode to `Chat` page <!-- id: 21 -->
+    - [x] **Verification** <!-- id: 22 -->
+        - [x] Create `tests/test_context_isolation.py` <!-- id: 23 -->
+        - [x] Verify Telegram Bot whitelist and context isolation <!-- id: 24 -->
+        - [x] Verify Web UI new features <!-- id: 25 -->
+- [x] **Web UI Refinement** <!-- id: 26 -->
+    - [x] Update `VectorDB` to retrieve unique `chat_id`s <!-- id: 27 -->
+    - [x] Update `Knowledge Base` to allow specifying `chat_id` on upload <!-- id: 28 -->
+    - [x] Update `Chat` to select `chat_id` and handle `/summary` vs QA <!-- id: 29 -->
 - [ ] **Transcription Service** <!-- id: 0 -->
     - [x] Implement `TranscriptionService` class <!-- id: 1 -->
     - [x] Add dependencies (`tenacity`) <!-- id: 2 -->

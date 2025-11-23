@@ -8,6 +8,8 @@ class IngestResponse(BaseModel):
 class SummarizeRequest(BaseModel):
     chat_id: Union[str, int]
     limit: int = 20
+    scope: str = "messages" # "messages" or "documents"
+    tags: Optional[List[str]] = None
     
     @field_validator('chat_id', mode='before')
     @classmethod
@@ -21,6 +23,7 @@ class SummarizeResponse(BaseModel):
 
 class AskRequest(BaseModel):
     query: str
+    chat_id: Optional[str] = None
     history: Optional[List[Dict[str, str]]] = None
 
 class AskResponse(BaseModel):

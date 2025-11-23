@@ -3,7 +3,7 @@ import os
 
 # sys.path hack removed
 
-from ai_core.common import settings, setup_logging, Message, Document
+from ai_core.common import settings, setup_logging, DomainMessage, Document
 from loguru import logger
 
 def test_common_lib():
@@ -27,7 +27,7 @@ def test_common_lib():
     
     # 3. Test Models
     print("\n3. Testing Models:")
-    msg = Message(
+    msg = DomainMessage(
         source="telegram",
         author_id="123",
         author_name="Test User",

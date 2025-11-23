@@ -6,9 +6,9 @@ from ai_core.api.dependencies import get_db_session, get_vector_db
 from ai_core.api.models import SummarizeRequest, SummarizeResponse, AskRequest, AskResponse
 from ai_core.storage.db import get_chat_state, get_messages, update_chat_state
 from ai_core.rag.vector_db import VectorDB
-from ai_core.agents.summarizer import summarize as agent_summarize
+from ai_core.agents.summarizer import summarize as agent_summarize, summarize_documents
 from ai_core.agents.qa import ask_question as agent_ask
-from ai_core.common.models import Message as CommonMessage
+from ai_core.common.models import DomainMessage
 
 router = APIRouter()
 
@@ -19,6 +19,15 @@ async def summarize(
 ):
     chat_id = str(request.chat_id)
     
+    if request.scope == "documents":
+        # Summarize documents
+        try:
+            summary_text = summarize_documents(chat_id=chat_id, tags=request.tags, limit=request.limit)
+        except Exception as e:
+            summary_text = f"Error generating document summary: {e}"
+        return SummarizeResponse(summary=summary_text)
+
+    # Default: Summarize messages
     # 1. Get Chat State
     state = await get_chat_state(chat_id)
     last_msg_id = state.last_summary_message_id if state else None
@@ -38,7 +47,7 @@ async def summarize(
         
         # Convert DB messages to Common messages
         common_messages = [
-            CommonMessage(
+            DomainMessage(
                 id=msg.id,
                 source=msg.source,
                 author_id=msg.chat_id, # Using chat_id as author_id for now
@@ -71,8 +80,9 @@ async def ask(
     # 1. Real QA Agent
     try:
         # We use a fixed user_id for now or derive from request if available
-        # For MVP, we can use "telegram_user"
-        answer = agent_ask(request.query, user_id="telegram_user")
+        # For MVP, we can use "telegram_user" or chat_id if provided
+        user_id = request.chat_id if request.chat_id else "telegram_user"
+        answer = agent_ask(request.query, user_id=user_id, chat_id=request.chat_id)
         sources = ["Sources are cited in the answer."]
     except Exception as e:
         answer = f"Error generating answer: {e}"

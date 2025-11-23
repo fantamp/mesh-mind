@@ -34,24 +34,30 @@ _vector_store = VectorDB()
 _session_service = InMemorySessionService()
 
 
+import contextvars
+
+# Context variable for chat_id
+_chat_id_ctx = contextvars.ContextVar("chat_id", default=None)
+
 # Custom Tool: Поиск в базе знаний
-def search_knowledge_base(query: str) -> str:
+def search_knowledge_base(query: str, chat_id: str) -> str:
     """
     Ищет релевантную информацию в базе знаний (Vector DB) по запросу пользователя.
     Используй этот инструмент, когда пользователь задает вопрос, требующий фактической информации из документов.
 
     Args:
         query: Поисковый запрос пользователя. Должен быть сформулирован как поисковый запрос, а не как вопрос.
+        chat_id: ID чата для фильтрации поиска.
 
     Returns:
         Строка, содержащая найденные фрагменты текста с указанием источника.
     """
-    logger.info(f"Поиск в базе знаний: {query}")
+    logger.info(f"Поиск в базе знаний: {query} (chat_id={chat_id})")
     
     try:
         # Ищем в векторной базе
         # VectorDB.search returns a dict with 'ids', 'documents', 'metadatas' (lists of lists)
-        results = _vector_store.search(query, n_results=5)
+        results = _vector_store.search(query, n_results=5, chat_id=chat_id)
         
         if not results or not results.get('documents') or not results['documents'][0]:
             return "В базе знаний не найдено релевантной информации по этому запросу."
@@ -83,14 +89,17 @@ _qa_agent = LlmAgent(
     instruction="""You are a helpful AI assistant that answers questions based on a knowledge base.
 
 HOW TO ANSWER:
-1. ALWAYS call the `search_knowledge_base` tool first to find relevant information.
-2. The tool will return documents with sources. USE THESE DOCUMENTS to answer the question.
-3. Extract the answer directly from the returned documents.
-4. If the documents contain the answer, provide it with source citation.
-5. ONLY say "Я не знаю" if the tool returns "В базе знаний не найдено релевантной информации".
+1. You will be provided with a `chat_id` in the user's message (e.g., "CONTEXT: chat_id='...'").
+2. ALWAYS call the `search_knowledge_base` tool first to find relevant information.
+3. PASS THE EXACT `chat_id` to the `search_knowledge_base` tool.
+4. The tool will return documents with sources. USE THESE DOCUMENTS to answer the question.
+5. Extract the answer directly from the returned documents.
+6. If the documents contain the answer, provide it with source citation.
+7. ONLY say "Я не знаю" if the tool returns "В базе знаний не найдено релевантной информации".
 
 EXAMPLE:
-User asks: "What is the capital of Australia?"
+User asks: "CONTEXT: chat_id='123' Question: What is the capital of Australia?"
+Tool call: search_knowledge_base(query="capital of Australia", chat_id="123")
 Tool returns: "[1] (источник: telegram)\nThe capital of Australia is Canberra."
 Your answer: "The capital of Australia is Canberra (источник: telegram)."
 
@@ -114,13 +123,14 @@ _qa_runner = Runner(
     )),
     reraise=True
 )
-def ask_question(question: str, user_id: str = "default_user") -> str:
+def ask_question(question: str, user_id: str = "default_user", chat_id: str = None) -> str:
     """
     Задаёт вопрос QA агенту.
     
     Args:
         question: Вопрос пользователя
         user_id: ID пользователя (для session management)
+        chat_id: ID чата для фильтрации контекста
         
     Returns:
         Ответ агента со ссылками на источники
@@ -132,13 +142,16 @@ def ask_question(question: str, user_id: str = "default_user") -> str:
     if not question or not question.strip():
         raise ValueError("Вопрос не может быть пустым")
     
-    logger.info(f"Получен вопрос от {user_id}: {question}")
+    logger.info(f"Получен вопрос от {user_id} (chat_id={chat_id}): {question}")
     
     try:
-        # Формируем сообщение пользователя
+        # Формируем сообщение пользователя с контекстом
+        context_prefix = f"CONTEXT: chat_id='{chat_id}'\n" if chat_id else "CONTEXT: chat_id=None\n"
+        full_question = context_prefix + "Question: " + question
+        
         user_content = types.Content(
             role='user',
-            parts=[types.Part(text=question)]
+            parts=[types.Part(text=full_question)]
         )
         
         # Генерируем session_id

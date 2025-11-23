@@ -1,5 +1,5 @@
 from .config import settings, Settings
 from .logging import setup_logging
-from .models import Message, Document
+from .models import DomainMessage, Document
 
-__all__ = ["settings", "Settings", "setup_logging", "Message", "Document"]
+__all__ = ["settings", "Settings", "setup_logging", "DomainMessage", "Document"]

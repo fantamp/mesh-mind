@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 AI_CORE_API_URL = os.getenv("AI_CORE_API_URL", "http://localhost:8000/api")
+TELEGRAM_ALLOWED_CHAT_IDS = os.getenv("TELEGRAM_ALLOWED_CHAT_IDS", "")
+ALLOWED_CHAT_IDS = [int(cid.strip()) for cid in TELEGRAM_ALLOWED_CHAT_IDS.split(",") if cid.strip()]
+
+def is_chat_allowed(chat_id: int) -> bool:
+    """Check if the chat ID is allowed."""
+    if not ALLOWED_CHAT_IDS:
+        return True # Allow all if whitelist is empty
+    return chat_id in ALLOWED_CHAT_IDS
 
 class ApiClient:
     """Client for interacting with the AI Core API."""
@@ -75,10 +83,10 @@ class ApiClient:
         return response.json()
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(httpx.RequestError))
-    async def ask(self, question: str):
+    async def ask(self, question: str, chat_id: int):
         """Calls the ask endpoint."""
         url = f"{self.base_url}/ask"
-        payload = {"query": question}
+        payload = {"query": question, "chat_id": str(chat_id)}
         response = await self.client.post(url, json=payload)
         response.raise_for_status()
         return response.json()
@@ -92,12 +100,29 @@ api_client = ApiClient(AI_CORE_API_URL)
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a welcome message when the command /start is issued."""
     user = update.effective_user
-    await update.message.reply_html(
-        rf"Hi {user.mention_html()}! I am your AI assistant. Send me text or voice messages, and I will save them. Use /summary or /ask to interact."
+    chat_id = update.effective_chat.id
+    
+    is_allowed = is_chat_allowed(chat_id)
+    status_icon = "✅ Authorized" if is_allowed else "❌ Not Authorized"
+    
+    msg = (
+        rf"👋 Hello {user.mention_html()}! I'm Mesh Mind Bot."
+        f"\n\nChat ID: <code>{chat_id}</code>"
+        f"\nStatus: {status_icon}"
     )
+    
+    if not is_allowed:
+        msg += "\n\nIf not authorized, please add this chat ID to TELEGRAM_ALLOWED_CHAT_IDS in your .env file."
+    else:
+        msg += "\n\nSend me text or voice messages, and I will save them. Use /summary or /ask to interact."
+        
+    await update.message.reply_html(msg)
 
 async def summary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Trigger summarization."""
+    if not is_chat_allowed(update.effective_chat.id):
+        return
+
     await update.message.reply_text("Generating summary, please wait...")
     try:
         result = await api_client.summarize(chat_id=update.effective_chat.id)
@@ -109,6 +134,9 @@ async def summary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Ask a question."""
+    if not is_chat_allowed(update.effective_chat.id):
+        return
+
     if not context.args:
         await update.message.reply_text("Please provide a question: /ask <your question>")
         return
@@ -116,7 +144,7 @@ async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     question = " ".join(context.args)
     await update.message.reply_text(f"Thinking about: '{question}'...")
     try:
-        result = await api_client.ask(question)
+        result = await api_client.ask(question, chat_id=update.effective_chat.id)
         answer = result.get("answer", "I don't know the answer.")
         await update.message.reply_text(answer)
     except Exception as e:
@@ -125,6 +153,9 @@ async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming text messages."""
+    if not is_chat_allowed(update.effective_chat.id):
+        return
+
     text = update.message.text
     user = update.effective_user
     chat = update.effective_chat
@@ -143,6 +174,9 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming voice messages."""
+    if not is_chat_allowed(update.effective_chat.id):
+        return
+
     voice = update.message.voice
     file_id = voice.file_id
     new_file = await context.bot.get_file(file_id)
@@ -157,7 +191,7 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
     
     user = update.effective_user
     chat = update.effective_chat
-
+    
     try:
         await api_client.ingest_file(
             str(file_path),

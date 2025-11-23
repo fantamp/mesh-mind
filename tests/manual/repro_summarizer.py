@@ -10,13 +10,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 # but summarizer imports Runner at module level.
 # So we will patch it where it is used or patch the class in the module.
 
-from ai_core.common.models import Message
+from ai_core.common.models import DomainMessage
 # Import summarizer - this will load the module and instantiate the agent/runner
 from ai_core.agents import summarizer
 
 def test_summarize():
     print("Testing summarize with Message object...")
-    msg = Message(
+    msg = DomainMessage(
         source="test",
         author_id="test_user",
         author_name="Test User",

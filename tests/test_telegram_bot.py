@@ -119,10 +119,11 @@ async def test_ask_command_no_args(mock_update, mock_context):
 async def test_ask_command_success(mock_update, mock_context, mock_api_client):
     mock_context.args = ["What", "is", "AI?"]
     mock_api_client.ask.return_value = {"answer": "AI is Artificial Intelligence."}
+    mock_update.effective_chat.id = 123
     
     await ask_command(mock_update, mock_context)
     
-    mock_api_client.ask.assert_called_once_with("What is AI?")
+    mock_api_client.ask.assert_called_once_with("What is AI?", chat_id=123)
     assert mock_update.message.reply_text.call_count == 2
     assert mock_update.message.reply_text.call_args_list[1][0][0] == "AI is Artificial Intelligence."
 

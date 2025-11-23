@@ -30,25 +30,25 @@ def test_search_knowledge_base_found(mock_vector_store):
         'metadatas': [[{'source': 'doc1.pdf'}, {'source': 'doc2.txt'}]]
     }
     
-    result = search_knowledge_base("test query")
+    result = search_knowledge_base("test query", chat_id="test_chat")
     
     assert "Chunk 1 content" in result
     assert "(источник: doc1.pdf)" in result
     assert "Chunk 2 content" in result
     assert "(источник: doc2.txt)" in result
-    mock_vector_store.search.assert_called_once_with("test query", n_results=5)
+    mock_vector_store.search.assert_called_once_with("test query", n_results=5, chat_id="test_chat")
 
 def test_search_knowledge_base_not_found(mock_vector_store):
     mock_vector_store.search.return_value = {'documents': [[]], 'metadatas': [[]]}
     
-    result = search_knowledge_base("unknown query")
+    result = search_knowledge_base("unknown query", chat_id="test_chat")
     
     assert "В базе знаний не найдено релевантной информации" in result
 
 def test_search_knowledge_base_error(mock_vector_store):
     mock_vector_store.search.side_effect = Exception("DB Error")
     
-    result = search_knowledge_base("error query")
+    result = search_knowledge_base("error query", chat_id="test_chat")
     
     assert "Ошибка поиска: DB Error" in result
 
