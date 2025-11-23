@@ -6,16 +6,16 @@ import os
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from ai_core.agents.qa import search_knowledge_base, ask_question
+from ai_core.agents.qa.agent import search_knowledge_base, ask_question
 
 @pytest.fixture
 def mock_vector_store():
-    with patch('ai_core.agents.qa._vector_store') as mock:
+    with patch('ai_core.agents.qa.agent._vector_store') as mock:
         yield mock
 
 @pytest.fixture
 def mock_run_agent_sync():
-    with patch('ai_core.agents.qa.run_agent_sync') as mock:
+    with patch('ai_core.agents.qa.agent.run_agent_sync') as mock:
         yield mock
 
 def test_search_knowledge_base_found(mock_vector_store):

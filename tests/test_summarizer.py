@@ -4,7 +4,7 @@ Unit-тесты для Summarizer Agent
 
 import pytest
 from datetime import datetime, timezone
-from ai_core.agents.summarizer import summarize
+from ai_core.agents.summarizer.agent import summarize
 from ai_core.common.models import DomainMessage
 
 

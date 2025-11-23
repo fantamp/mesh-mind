@@ -1,4 +1,4 @@
-.PHONY: api bot install test ui
+.PHONY: api bot install test ui adk-web
 
 api:
 	uvicorn ai_core.api.main:app --reload
@@ -14,3 +14,6 @@ install:
 
 test:
 	pytest
+
+adk-web:
+	cd ai_core/agents && adk web
