@@ -4,24 +4,16 @@ QA Agent
 Агент для ответов на вопросы на основе базы знаний (RAG pattern) используя Google ADK.
 """
 
-import asyncio
 import os
-import uuid
-from typing import List, Dict, Any, Optional
+import contextvars
+from typing import Optional
 
 from google.adk.agents import LlmAgent
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from google.api_core.exceptions import ResourceExhausted, InternalServerError, ServiceUnavailable
-# Note: _ResourceExhaustedError might be internal, relying on standard exceptions first
-# from google.adk.models.google_llm import _ResourceExhaustedError 
 
 from ai_core.common.config import settings
 from ai_core.rag.vector_db import VectorDB
-
 from ai_core.common.logging import logger
+from ai_core.common.adk import run_agent_sync, standard_retry
 
 # Устанавливаем API key для ADK
 os.environ["GOOGLE_API_KEY"] = settings.GOOGLE_API_KEY
@@ -29,12 +21,6 @@ os.environ["GOOGLE_API_KEY"] = settings.GOOGLE_API_KEY
 # Инициализируем Vector Store (подключение к ChromaDB)
 # Используем глобальную переменную для переиспользования соединения
 _vector_store = VectorDB()
-
-# Session service
-_session_service = InMemorySessionService()
-
-
-import contextvars
 
 # Context variable for chat_id
 _chat_id_ctx = contextvars.ContextVar("chat_id", default=None)
@@ -107,22 +93,8 @@ Answer in the same language as the question.""",
     tools=[search_knowledge_base],  # Передаём custom tool
 )
 
-# Создаём runner
-_qa_runner = Runner(
-    agent=_qa_agent,
-    app_name="agents", # Используем "agents" для соответствия структуре ADK
-    session_service=_session_service,
-)
 
-
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((
-        ResourceExhausted, InternalServerError, ServiceUnavailable, Exception
-    )),
-    reraise=True
-)
+@standard_retry
 def ask_question(question: str, user_id: str = "default_user", chat_id: str = None) -> str:
     """
     Задаёт вопрос QA агенту.
@@ -144,70 +116,20 @@ def ask_question(question: str, user_id: str = "default_user", chat_id: str = No
     
     logger.info(f"Получен вопрос от {user_id} (chat_id={chat_id}): {question}")
     
-    try:
-        # Формируем сообщение пользователя с контекстом
-        context_prefix = f"CONTEXT: chat_id='{chat_id}'\n" if chat_id else "CONTEXT: chat_id=None\n"
-        full_question = context_prefix + "Question: " + question
-        
-        user_content = types.Content(
-            role='user',
-            parts=[types.Part(text=full_question)]
-        )
-        
-        # Генерируем session_id
-        # В реальном приложении можно хранить маппинг user_id -> session_id
-        # Для MVP создаем новую сессию или используем детерминированный ID, если хотим сохранять контекст
-        # Здесь используем детерминированный ID для пользователя, чтобы сохранять контекст беседы
-        session_id = f"qa_session_{user_id}"
-        
-        from concurrent.futures import ThreadPoolExecutor
-
-        # Явно создаем сессию асинхронно перед использованием runner'а
-        # ADK требует явного создания сессии
-        def run_in_thread():
-            try:
-                asyncio.run(_session_service.create_session(
-                    app_name="agents",
-                    user_id=user_id,
-                    session_id=session_id
-                ))
-            except Exception:
-                pass
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-            
-        if loop and loop.is_running():
-             # Если мы уже в event loop (например, в тестах), запускаем в отдельном потоке
-            with ThreadPoolExecutor() as executor:
-                executor.submit(run_in_thread).result()
-        else:
-            run_in_thread()
-        
-        # Вызываем агента через runner
-        response_text = None
-        
-        # Runner.run возвращает генератор событий
-        for event in _qa_runner.run(
-            user_id=user_id,
-            session_id=session_id,
-            new_message=user_content
-        ):
-            # Ищем финальный ответ
-            if event.is_final_response() and event.content and event.content.parts:
-                response_text = event.content.parts[0].text
-                break
-        
-        if not response_text:
-            # Если не нашли final response, попробуем собрать из чанков (если стриминг)
-            # Но для LlmAgent обычно есть final response event
-            raise Exception("Агент не вернул ответ")
-        
-        logger.info(f"Ответ сгенерирован, длина: {len(response_text)} символов")
-        return response_text
-        
-    except Exception as e:
-        logger.error(f"Ошибка при обработке вопроса: {e}")
-        raise
+    # Формируем сообщение пользователя с контекстом
+    context_prefix = f"CONTEXT: chat_id='{chat_id}'\n" if chat_id else "CONTEXT: chat_id=None\n"
+    full_question = context_prefix + "Question: " + question
+    
+    # Генерируем session_id
+    # В реальном приложении можно хранить маппинг user_id -> session_id
+    # Для MVP создаем новую сессию или используем детерминированный ID, если хотим сохранять контекст
+    # Здесь используем детерминированный ID для пользователя, чтобы сохранять контекст беседы
+    session_id = f"qa_session_{user_id}"
+    
+    # Используем shared helper
+    return run_agent_sync(
+        agent=_qa_agent,
+        user_message=full_question,
+        user_id=user_id,
+        session_id=session_id
+    )

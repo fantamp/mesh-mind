@@ -6,7 +6,7 @@ import os
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from ai_core.agents.qa import search_knowledge_base, ask_question, _vector_store, _qa_runner, _session_service
+from ai_core.agents.qa import search_knowledge_base, ask_question
 
 @pytest.fixture
 def mock_vector_store():
@@ -14,13 +14,8 @@ def mock_vector_store():
         yield mock
 
 @pytest.fixture
-def mock_runner():
-    with patch('ai_core.agents.qa._qa_runner') as mock:
-        yield mock
-
-@pytest.fixture
-def mock_session_service():
-    with patch('ai_core.agents.qa._session_service') as mock:
+def mock_run_agent_sync():
+    with patch('ai_core.agents.qa.run_agent_sync') as mock:
         yield mock
 
 def test_search_knowledge_base_found(mock_vector_store):
@@ -52,30 +47,25 @@ def test_search_knowledge_base_error(mock_vector_store):
     
     assert "Ошибка поиска: DB Error" in result
 
-@patch('ai_core.agents.qa.asyncio.run')
-def test_ask_question_success(mock_asyncio_run, mock_runner, mock_session_service):
-    # Setup mock runner event
-    mock_event = MagicMock()
-    mock_event.is_final_response.return_value = True
-    mock_event.content.parts = [MagicMock(text="Answer from agent")]
-    
-    mock_runner.run.return_value = [mock_event]
+def test_ask_question_success(mock_run_agent_sync):
+    mock_run_agent_sync.return_value = "Answer from agent"
     
     response = ask_question("What is X?", user_id="test_user")
     
     assert response == "Answer from agent"
-    # Verify session creation was attempted
-    assert mock_asyncio_run.called
+    # Verify run_agent_sync was called with correct arguments
+    mock_run_agent_sync.assert_called_once()
+    call_args = mock_run_agent_sync.call_args
+    assert call_args.kwargs['user_id'] == "test_user"
+    assert "What is X?" in call_args.kwargs['user_message']
 
 def test_ask_question_empty():
     with pytest.raises(ValueError, match="Вопрос не может быть пустым"):
         ask_question("")
 
-@patch('ai_core.agents.qa.asyncio.run')
-def test_ask_question_no_response(mock_asyncio_run, mock_runner):
-    # Runner returns no events or no final response
-    mock_runner.run.return_value = []
+def test_ask_question_error(mock_run_agent_sync):
+    mock_run_agent_sync.side_effect = Exception("Agent error")
     
-    with pytest.raises(Exception, match="Агент не вернул ответ"):
+    with pytest.raises(Exception, match="Agent error"):
         ask_question("Query", user_id="user")
 
