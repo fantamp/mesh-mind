@@ -1,1 +1,1 @@
-from .agent import search_knowledge_base, ask_question
+from .agent import agent

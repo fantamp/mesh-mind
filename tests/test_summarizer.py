@@ -3,82 +3,22 @@ Unit-тесты для Summarizer Agent
 """
 
 import pytest
-from datetime import datetime, timezone
-from ai_core.agents.summarizer.agent import summarize
-from ai_core.common.models import DomainMessage
+from unittest.mock import MagicMock, patch
+from ai_core.services.agent_service import run_summarizer as summarize_chat
 
+@pytest.fixture
+def mock_run_agent_sync():
+    with patch('ai_core.services.agent_service.run_agent_sync') as mock:
+        yield mock
 
-def test_summarize_with_messages():
-    """Тест: агент возвращает непустую строку для списка сообщений"""
-    messages = [
-        DomainMessage(
-            source="test",
-            author_id="user1",
-            author_name="Alice",
-            content="Привет! Как дела?",
-            timestamp=datetime.now(timezone.utc)
-        ),
-        DomainMessage(
-            source="test",
-            author_id="user2",
-            author_name="Bob",
-            content="Отлично! Работаю над новым проектом.",
-            timestamp=datetime.now(timezone.utc)
-        ),
-        DomainMessage(
-            source="test",
-            author_id="user1",
-            author_name="Alice",
-            content="Круто! Расскажи подробнее.",
-            timestamp=datetime.now(timezone.utc)
-        )
-    ]
+def test_summarize_chat_success(mock_run_agent_sync):
+    mock_run_agent_sync.return_value = "Summary text"
     
-    summary = summarize(messages)
+    result = summarize_chat(chat_id="123", instruction="Make it short")
     
-    # Проверяем, что саммари не пустое
-    assert summary is not None
-    assert len(summary) > 0
-    assert isinstance(summary, str)
+    assert result == "Summary text"
     
-    print(f"\nСаммари (для визуальной проверки):\n{summary}")
-
-
-def test_summarize_empty_list():
-    """Тест: агент выбрасывает исключение для пустого списка"""
-    with pytest.raises(ValueError, match="Список сообщений не может быть пустым"):
-        summarize([])
-
-
-def test_summarize_multilingual():
-    """Тест: агент работает с многоязычными сообщениями"""
-    messages = [
-        DomainMessage(
-            source="test",
-            author_id="user1",
-            author_name="John",
-            content="Hello! How are you?",
-            timestamp=datetime.now(timezone.utc)
-        ),
-        DomainMessage(
-            source="test",
-            author_id="user2",
-            author_name="Юрий",
-            content="Привет! Все отлично, спасибо!",
-            timestamp=datetime.now(timezone.utc)
-        ),
-        DomainMessage(
-            source="test",
-            author_id="user3",
-            author_name="Олександр",
-            content="Привіт усім! Що нового?",
-            timestamp=datetime.now(timezone.utc)
-        )
-    ]
-    
-    summary = summarize(messages)
-    
-    assert summary is not None
-    assert len(summary) > 0
-    
-    print(f"\nМногоязычное саммари:\n{summary}")
+    mock_run_agent_sync.assert_called_once()
+    call_args = mock_run_agent_sync.call_args
+    assert "chat_id='123'" in call_args.kwargs['user_message']
+    assert "Make it short" in call_args.kwargs['user_message']

@@ -6,8 +6,7 @@ from ai_core.api.dependencies import get_db_session, get_vector_db
 from ai_core.api.models import SummarizeRequest, SummarizeResponse, AskRequest, AskResponse
 from ai_core.storage.db import get_chat_state, get_messages, update_chat_state
 from ai_core.rag.vector_db import VectorDB
-from ai_core.agents.summarizer import summarize as agent_summarize, summarize_documents
-from ai_core.agents.qa import ask_question as agent_ask
+from ai_core.services.agent_service import run_qa as agent_ask, run_document_summarizer, run_summarizer
 from ai_core.common.models import DomainMessage
 
 router = APIRouter()
@@ -22,7 +21,7 @@ async def summarize(
     if request.scope == "documents":
         # Summarize documents
         try:
-            summary_text = summarize_documents(chat_id=chat_id, tags=request.tags, limit=request.limit)
+            summary_text = run_document_summarizer(chat_id=chat_id, tags=request.tags)
         except Exception as e:
             summary_text = f"Error generating document summary: {e}"
         return SummarizeResponse(summary=summary_text)
@@ -43,26 +42,12 @@ async def summarize(
     # 3. Real Summarizer Agent
     try:
         from loguru import logger
-        logger.info(f"Calling agent_summarize for {len(messages)} messages")
+        logger.info(f"Calling run_summarizer for chat_id={chat_id}")
         
-        # Convert DB messages to Common messages
-        common_messages = [
-            DomainMessage(
-                id=msg.id,
-                source=msg.source,
-                author_id=msg.chat_id, # Using chat_id as author_id for now
-                author_name=msg.author_name,
-                content=msg.content,
-                timestamp=msg.created_at,
-                media_path=msg.media_path,
-                media_type=msg.media_type
-            ) for msg in messages
-        ]
-        
-        summary_text = agent_summarize(common_messages)
-        logger.info("agent_summarize completed successfully")
+        summary_text = run_summarizer(chat_id=chat_id, user_id="api_user")
+        logger.info("run_summarizer completed successfully")
     except Exception as e:
-        logger.error(f"agent_summarize failed: {e}")
+        logger.error(f"run_summarizer failed: {e}")
         summary_text = f"Error generating summary: {e}"
     
     # 4. Update State

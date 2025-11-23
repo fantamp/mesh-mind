@@ -5,6 +5,7 @@ from .db import (
     get_chat_state,
     update_chat_state,
     save_document_metadata,
+    Message,
     ChatState,
     DocumentMetadata
 )
@@ -17,6 +18,7 @@ __all__ = [
     "get_chat_state",
     "update_chat_state",
     "save_document_metadata",
+    "Message",
     "ChatState",
     "DocumentMetadata",
     "save_file"

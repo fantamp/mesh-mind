@@ -1,8 +1,8 @@
 import pytest
 import asyncio
 from ai_core.rag.vector_db import VectorDB
-from ai_core.agents.qa import ask_question
-from ai_core.agents.summarizer import summarize_documents
+from ai_core.services.agent_service import run_qa as ask_question
+from ai_core.services.agent_service import run_document_summarizer as summarize_documents
 
 # Use a separate collection for testing to avoid messing with real data
 # But VectorDB uses a hardcoded collection name "mesh_mind_v1"
@@ -29,14 +29,14 @@ async def test_context_isolation():
     
     # Test QA Agent for Chat A
     # Should find ALPHA, should NOT find BETA
-    answer_a = ask_question("What is the secret code?", user_id="tester", chat_id=chat_id_a)
+    answer_a = ask_question("What is the secret code?", user_id="tester_A", chat_id=chat_id_a)
     print(f"Answer A: {answer_a}")
     assert "ALPHA" in answer_a
     assert "BETA" not in answer_a
     
     # Test QA Agent for Chat B
     # Should find BETA, should NOT find ALPHA
-    answer_b = ask_question("What is the secret code?", user_id="tester", chat_id=chat_id_b)
+    answer_b = ask_question("What is the secret code?", user_id="tester_B", chat_id=chat_id_b)
     print(f"Answer B: {answer_b}")
     assert "BETA" in answer_b
     assert "ALPHA" not in answer_b
