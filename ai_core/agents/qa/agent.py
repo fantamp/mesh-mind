@@ -39,5 +39,6 @@ Answer in the same language as the question.""",
     tools=[search_knowledge_base],  # Передаём custom tool
 )
 
-# Expose agent for ADK
+# Expose agent for our services and for ADK
 agent = _qa_agent
+root_agent = agent  # ADK ищет root_agent

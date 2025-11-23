@@ -32,3 +32,6 @@ HOW TO WORK:
 """,
     tools=[fetch_chat_messages, fetch_documents]
 )
+
+# Expose agent for ADK (ожидает root_agent)
+root_agent = agent

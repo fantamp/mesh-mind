@@ -16,4 +16,4 @@ test:
 	pytest
 
 adk-web:
-	cd ai_core/agents && adk web
+	cd ai_core/agents && PYTHONPATH=$(shell pwd) adk web
