@@ -106,9 +106,7 @@ async def test_summary_command_success(mock_update, mock_context, mock_api_clien
     mock_context.args = []  # Дефолтные аргументы (auto режим)
     
     # Need to allow non-whitelisted chats for testing
-    # Мокаем find_conversation_boundary чтобы избежать обращения к БД
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True), \
-         patch("ai_core.storage.db.find_conversation_boundary", new_callable=AsyncMock, return_value=None):
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
         await summary_command(mock_update, mock_context)
     
     # Проверяем что summarize был вызван (с auto режимом будет вызван с limit параметром)

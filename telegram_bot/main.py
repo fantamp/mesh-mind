@@ -180,27 +180,7 @@ async def summary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         else:
             params = parse_summary_params(context.args if context.args else [])
             
-            if params["mode"] == "auto":
-                # Автоопределение границы разговора
-                import sys
-                import os
-                sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-                
-                from ai_core.storage.db import find_conversation_boundary
-                from ai_core.common.config import settings
-                
-                # Найти границу разговора
-                boundary = await find_conversation_boundary(str(chat_id))
-                
-                if boundary:
-                    # Нашли границу - используем её
-                    api_params["since_datetime"] = boundary.isoformat()
-                    api_params["limit"] = settings.SUMMARY_DEFAULT_LIMIT
-                else:
-                    # Граница не найдена - используем дефолтный лимит
-                    api_params["limit"] = settings.SUMMARY_DEFAULT_LIMIT
-                    
-            elif params["mode"] == "count":
+            if params["mode"] == "count":
                 # Указано количество сообщений
                 api_params["limit"] = params["value"]
                 
@@ -216,6 +196,9 @@ async def summary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 
                 api_params["since_datetime"] = since.isoformat()
                 api_params["limit"] = 1000  # Большой лимит для временного интервала
+            
+            # Если mode="auto" (дефолт), мы просто не передаем since_datetime и limit (или дефолтный limit)
+            # API само разберется (возьмет от последнего саммари)
         
         # Вызов API
         result = await api_client.summarize(**api_params)

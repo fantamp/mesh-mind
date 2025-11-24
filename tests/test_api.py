@@ -10,6 +10,7 @@ from ai_core.api.main import app
 from ai_core.api.dependencies import get_vector_db, MockVectorDB
 from ai_core.storage.db import init_db, engine
 from sqlmodel import SQLModel
+from unittest.mock import patch, AsyncMock, MagicMock
 
 # Override dependency to ensure we use MockVectorDB during tests if not already
 app.dependency_overrides[get_vector_db] = lambda: MockVectorDB()
@@ -46,9 +47,27 @@ def test_ask(client):
     assert "sources" in response.json()
 
 def test_summarize(client):
-    response = client.post(
-        "/api/summarize",
-        json={"chat_id": "123", "limit": 5}
-    )
-    assert response.status_code == 200
-    assert "summary" in response.json()
+    # Mock all DB and service calls to isolate the API test
+    with patch("ai_core.api.routers.chat.get_chat_state", new_callable=AsyncMock) as mock_get_state, \
+         patch("ai_core.api.routers.chat.get_messages", new_callable=AsyncMock) as mock_get_messages, \
+         patch("ai_core.storage.db.get_messages_after_id", new_callable=AsyncMock) as mock_get_messages_after_id, \
+         patch("ai_core.api.routers.chat.update_chat_state", new_callable=AsyncMock) as mock_update_state, \
+         patch("ai_core.api.routers.chat.run_summarizer") as mock_run_summarizer:
+        
+        # Setup mocks
+        mock_get_state.return_value = None # No previous state
+        mock_msg = MagicMock()
+        mock_msg.id = "msg1"
+        mock_msg.content = "Hello"
+        mock_msg.author_name = "User"
+        mock_msg.created_at = "2023-01-01"
+        mock_get_messages.return_value = [mock_msg]
+        mock_run_summarizer.return_value = "Summary text"
+        
+        response = client.post(
+            "/api/summarize",
+            json={"chat_id": "123", "limit": 5}
+        )
+        
+        assert response.status_code == 200
+        assert response.json() == {"summary": "Summary text"}

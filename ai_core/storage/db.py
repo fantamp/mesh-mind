@@ -87,6 +87,29 @@ async def get_messages(chat_id: str, limit: int = 50, offset: int = 0, since: Op
         result = await session.execute(statement)
         return result.scalars().all()
 
+async def get_messages_after_id(chat_id: str, after_message_id: str, limit: int = 50) -> List[Message]:
+    """
+    Получить сообщения из чата, отправленные после указанного сообщения.
+    """
+    async with async_session() as session:
+        # Сначала найдем сообщение, от которого отталкиваемся
+        ref_msg_stmt = select(Message).where(Message.id == after_message_id)
+        ref_msg_result = await session.execute(ref_msg_stmt)
+        ref_msg = ref_msg_result.scalars().first()
+        
+        if not ref_msg:
+            # Если сообщение не найдено (удалено?), вернем просто последние limit
+            return await get_messages(chat_id, limit=limit)
+            
+        # Выбираем сообщения новее найденного
+        statement = select(Message).where(
+            Message.chat_id == chat_id,
+            Message.created_at > ref_msg.created_at
+        ).order_by(Message.created_at.desc()).limit(limit)
+        
+        result = await session.execute(statement)
+        return result.scalars().all()
+
 async def get_chat_state(chat_id: str) -> Optional[ChatState]:
     async with async_session() as session:
         statement = select(ChatState).where(ChatState.chat_id == chat_id)

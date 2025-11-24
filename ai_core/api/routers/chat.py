@@ -33,18 +33,30 @@ async def summarize(
     state = await get_chat_state(chat_id)
     last_msg_id = state.last_summary_message_id if state else None
     
-    # 2. Fetch Messages с учетом фильтрации по времени
-    since_dt = None
+    # 2. Fetch Messages
+    messages = []
+    
     if request.since_datetime:
-        # Парсинг ISO формата даты-времени
+        # Если указано время, используем его
+        since_dt = None
         from datetime import datetime
         try:
             since_dt = datetime.fromisoformat(request.since_datetime.replace('Z', '+00:00'))
         except ValueError:
-            # Если формат некорректный, игнорируем
             pass
-    
-    messages = await get_messages(chat_id, limit=request.limit, since=since_dt)
+        messages = await get_messages(chat_id, limit=request.limit, since=since_dt)
+        
+    elif last_msg_id:
+        # Если времени нет, но есть ID последнего саммари -> берем всё, что после него
+        from ai_core.storage.db import get_messages_after_id
+        # Limit здесь может быть больше, так как мы хотим "всё новое"
+        # Но для безопасности оставим request.limit или дефолт побольше
+        fetch_limit = request.limit if request.limit > 50 else 100
+        messages = await get_messages_after_id(chat_id, last_msg_id, limit=fetch_limit)
+        
+    else:
+        # Если нет ни времени, ни истории саммари -> берем последние N
+        messages = await get_messages(chat_id, limit=request.limit)
     
     if not messages:
         return SummarizeResponse(summary="No new messages to summarize.")
