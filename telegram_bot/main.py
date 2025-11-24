@@ -74,10 +74,10 @@ class ApiClient:
         return response.json()
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(httpx.RequestError))
-    async def summarize(self, chat_id: int):
+    async def summarize(self, chat_id: int, **kwargs):
         """Calls the summarize endpoint."""
         url = f"{self.base_url}/summarize"
-        payload = {"chat_id": chat_id}
+        payload = {"chat_id": chat_id, **kwargs}
         response = await self.client.post(url, json=payload)
         response.raise_for_status()
         return response.json()
@@ -96,6 +96,41 @@ class ApiClient:
 
 # Initialize API Client
 api_client = ApiClient(AI_CORE_API_URL)
+
+def parse_summary_params(args: list) -> dict:
+    """
+    Парсит параметры команды /summary.
+    
+    Args:
+        args: Список аргументов команды
+        
+    Returns:
+        Словарь с параметрами: {"mode": "auto|count|time", "value": ...}
+    """
+    if not args:
+        # Дефолтное поведение - автоопределение разговора
+        return {"mode": "auto"}
+    
+    param = args[0].strip()
+    
+    # Проверка на число (количество сообщений)
+    if param.isdigit():
+        return {"mode": "count", "value": int(param)}
+    
+    # Проверка на формат времени (2h, 30m)
+    if len(param) > 1:
+        number_part = param[:-1]
+        unit = param[-1].lower()
+        
+        if number_part.isdigit():
+            if unit == 'h':
+                return {"mode": "time", "hours": int(number_part)}
+            elif unit == 'm':
+                return {"mode": "time", "minutes": int(number_part)}
+    
+    # Если не удалось распарсить, используем auto режим
+    return {"mode": "auto"}
+
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a welcome message when the command /start is issued."""
@@ -119,18 +154,109 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_html(msg)
 
 async def summary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Trigger summarization."""
+    """Trigger summarization с поддержкой различных параметров и reply."""
     if not is_chat_allowed(update.effective_chat.id):
         return
 
+    chat_id = update.effective_chat.id
+    
     await update.message.reply_text("Generating summary, please wait...")
+    
     try:
-        result = await api_client.summarize(chat_id=update.effective_chat.id)
+        # Подготовка параметров для API
+        api_params = {"chat_id": chat_id}
+        
+        # ПРИОРИТЕТ 1: Проверка на reply - имеет наивысший приоритет
+        if update.message.reply_to_message:
+            # Пользователь сделал reply на сообщение
+            # Используем timestamp этого сообщения как начало периода
+            reply_msg = update.message.reply_to_message
+            since_dt = reply_msg.date  # Telegram API возвращает datetime в UTC
+            
+            api_params["since_datetime"] = since_dt.isoformat()
+            api_params["limit"] = 1000  # Большой лимит для временного интервала
+            
+        # ПРИОРИТЕТ 2: Парсинг параметров команды (только если нет reply)
+        else:
+            params = parse_summary_params(context.args if context.args else [])
+            
+            if params["mode"] == "auto":
+                # Автоопределение границы разговора
+                import sys
+                import os
+                sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+                
+                from ai_core.storage.db import find_conversation_boundary
+                from ai_core.common.config import settings
+                
+                # Найти границу разговора
+                boundary = await find_conversation_boundary(str(chat_id))
+                
+                if boundary:
+                    # Нашли границу - используем её
+                    api_params["since_datetime"] = boundary.isoformat()
+                    api_params["limit"] = settings.SUMMARY_DEFAULT_LIMIT
+                else:
+                    # Граница не найдена - используем дефолтный лимит
+                    api_params["limit"] = settings.SUMMARY_DEFAULT_LIMIT
+                    
+            elif params["mode"] == "count":
+                # Указано количество сообщений
+                api_params["limit"] = params["value"]
+                
+            elif params["mode"] == "time":
+                # Указан временной интервал
+                from datetime import datetime, timedelta, timezone
+                
+                now = datetime.now(timezone.utc)
+                if "hours" in params:
+                    since = now - timedelta(hours=params["hours"])
+                else:  # minutes
+                    since = now - timedelta(minutes=params["minutes"])
+                
+                api_params["since_datetime"] = since.isoformat()
+                api_params["limit"] = 1000  # Большой лимит для временного интервала
+        
+        # Вызов API
+        result = await api_client.summarize(**api_params)
         summary_text = result.get("summary", "No summary available.")
         await update.message.reply_text(summary_text)
+        
     except Exception as e:
-        logger.error(f"Error getting summary: {e}")
+        logger.error(f"Error getting summary: {e}", exc_info=True)
         await update.message.reply_text("Sorry, I couldn't get the summary at this time.")
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Показать справку по командам бота."""
+    if not is_chat_allowed(update.effective_chat.id):
+        return
+    
+    help_text = """
+📚 **Mesh Mind Bot - Commands**
+
+**Basic Commands:**
+• `/start` - Welcome message and chat status
+• `/help` - Show this help message
+
+**Summary Commands:**
+• `/summary` - Auto-detect and summarize the latest conversation (based on message gaps)
+• `/summary` (reply) - **Reply to any message** and use `/summary` to get summary from that message
+• `/summary N` - Summarize last N messages (e.g., `/summary 20`)
+• `/summary Nh` - Summarize messages from last N hours (e.g., `/summary 2h`)
+• `/summary Nm` - Summarize messages from last N minutes (e.g., `/summary 30m`)
+
+**Q&A Command:**
+• `/ask <question>` - Ask a question based on the knowledge base
+
+**Message Processing:**
+I automatically save all text and voice messages you send to the chat for future reference.
+    """.strip()
+    
+    await update.message.reply_text(help_text, parse_mode="Markdown")
+
+
+
 
 async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Ask a question."""
@@ -223,6 +349,7 @@ def main() -> None:
     # Commands
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("summary", summary_command))
+    application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("ask", ask_command))
 
     # Messages

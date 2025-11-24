@@ -15,6 +15,8 @@ from telegram_bot.main import (
     ask_command,
     handle_text_message,
     handle_voice_message,
+    parse_summary_params,
+    help_command,
 )
 
 # --- Fixtures ---
@@ -101,15 +103,20 @@ async def test_start_command(mock_update, mock_context):
 async def test_summary_command_success(mock_update, mock_context, mock_api_client):
     mock_api_client.summarize.return_value = {"summary": "Here is the summary."}
     mock_update.effective_chat.id = 123
+    mock_context.args = []  # Дефолтные аргументы (auto режим)
     
     # Need to allow non-whitelisted chats for testing
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+    # Мокаем find_conversation_boundary чтобы избежать обращения к БД
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True), \
+         patch("ai_core.storage.db.find_conversation_boundary", new_callable=AsyncMock, return_value=None):
         await summary_command(mock_update, mock_context)
     
-    mock_api_client.summarize.assert_called_once_with(chat_id=123)
+    # Проверяем что summarize был вызван (с auto режимом будет вызван с limit параметром)
+    mock_api_client.summarize.assert_called_once()
     # Should reply twice: "Generating..." and then the summary
     assert mock_update.message.reply_text.call_count == 2
     assert mock_update.message.reply_text.call_args_list[1][0][0] == "Here is the summary."
+
 
 @pytest.mark.asyncio
 async def test_ask_command_no_args(mock_update, mock_context):
@@ -183,3 +190,82 @@ async def test_handle_voice_message_success(mock_update, mock_context, mock_api_
             chat_id=str(mock_update.effective_chat.id)
         )
         mock_update.message.reply_text.assert_called_once_with("Voice message saved and processing.")
+
+# --- parse_summary_params Tests ---
+
+def test_parse_summary_params_empty():
+    """Тест автоопределения разговора при пустых аргументах"""
+    result = parse_summary_params([])
+    assert result["mode"] == "auto"
+
+def test_parse_summary_params_count():
+    """Тест парсинга количества сообщений"""
+    result = parse_summary_params(["20"])
+    assert result["mode"] == "count"
+    assert result["value"] == 20
+
+def test_parse_summary_params_hours():
+    """Тест парсинга временного интервала в часах"""
+    result = parse_summary_params(["2h"])
+    assert result["mode"] == "time"
+    assert result["hours"] == 2
+
+def test_parse_summary_params_minutes():
+    """Тест парсинга временного интервала в минутах"""
+    result = parse_summary_params(["30m"])
+    assert result["mode"] == "time"
+    assert result["minutes"] == 30
+
+def test_parse_summary_params_invalid():
+    """Тест некорректного формата - должен вернуть auto режим"""
+    result = parse_summary_params(["invalid_format"])
+    assert result["mode"] == "auto"
+
+# --- Reply-based summary Tests ---
+
+@pytest.mark.asyncio
+async def test_summary_command_with_reply(mock_update, mock_context, mock_api_client):
+    """Тест команды /summary с reply на сообщение"""
+    from datetime import datetime, timezone
+    
+    mock_api_client.summarize.return_value = {"summary": "Summary from replied message."}
+    mock_update.effective_chat.id = 123
+    mock_context.args = []
+    
+    # Мокаем reply_to_message
+    mock_reply_message = MagicMock()
+    mock_reply_message.date = datetime(2025, 11, 24, 8, 0, 0, tzinfo=timezone.utc)
+    mock_update.message.reply_to_message = mock_reply_message
+    
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+        await summary_command(mock_update, mock_context)
+    
+    # Проверяем что summarize был вызван с since_datetime из reply
+    mock_api_client.summarize.assert_called_once()
+    call_kwargs = mock_api_client.summarize.call_args.kwargs
+    assert "since_datetime" in call_kwargs
+    assert call_kwargs["chat_id"] == 123
+    
+    # Проверяем что был ответ пользователю
+    assert mock_update.message.reply_text.call_count == 2
+    assert mock_update.message.reply_text.call_args_list[1][0][0] == "Summary from replied message."
+
+
+# --- help_command Tests ---
+
+@pytest.mark.asyncio
+async def test_help_command(mock_update, mock_context):
+    """Тест команды /help"""
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+        await help_command(mock_update, mock_context)
+    
+    # Проверяем что был вызван reply_text с текстом справки
+    mock_update.message.reply_text.assert_called_once()
+    help_text = mock_update.message.reply_text.call_args[0][0]
+    
+    # Проверяем что в справке есть все основные команды
+    assert "/start" in help_text
+    assert "/help" in help_text
+    assert "/summary" in help_text
+    assert "/ask" in help_text
+

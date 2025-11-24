@@ -10,6 +10,7 @@ class SummarizeRequest(BaseModel):
     limit: int = 20
     scope: str = "messages" # "messages" or "documents"
     tags: Optional[List[str]] = None
+    since_datetime: Optional[str] = None  # ISO формат datetime для фильтрации сообщений
     
     @field_validator('chat_id', mode='before')
     @classmethod

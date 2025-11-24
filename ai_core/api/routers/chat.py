@@ -31,10 +31,18 @@ async def summarize(
     state = await get_chat_state(chat_id)
     last_msg_id = state.last_summary_message_id if state else None
     
-    # 2. Fetch Messages
-    # MVP: Just fetch last N messages for now as get_messages logic for "after ID" is not fully implemented in db.py yet
-    # Ideally we would filter where id > last_msg_id or created_at > last_summary_time
-    messages = await get_messages(chat_id, limit=request.limit)
+    # 2. Fetch Messages с учетом фильтрации по времени
+    since_dt = None
+    if request.since_datetime:
+        # Парсинг ISO формата даты-времени
+        from datetime import datetime
+        try:
+            since_dt = datetime.fromisoformat(request.since_datetime.replace('Z', '+00:00'))
+        except ValueError:
+            # Если формат некорректный, игнорируем
+            pass
+    
+    messages = await get_messages(chat_id, limit=request.limit, since=since_dt)
     
     if not messages:
         return SummarizeResponse(summary="No new messages to summarize.")
@@ -44,7 +52,7 @@ async def summarize(
         from loguru import logger
         logger.info(f"Calling run_summarizer for chat_id={chat_id}")
         
-        summary_text = run_summarizer(chat_id=chat_id, user_id="api_user")
+        summary_text = run_summarizer(chat_id=chat_id, user_id="api_user", since=request.since_datetime, limit=request.limit)
         logger.info("run_summarizer completed successfully")
     except Exception as e:
         logger.error(f"run_summarizer failed: {e}")

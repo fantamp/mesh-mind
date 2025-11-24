@@ -19,7 +19,7 @@ agent = LlmAgent(
 Your goal is to summarize conversations or documents based on the user's request.
 
 TOOLS:
-- `fetch_chat_messages(chat_id, limit)`: Use this to get recent messages from a chat.
+- `fetch_chat_messages(chat_id, limit, since)`: Use this to get recent messages from a chat. `since` is an optional ISO datetime string to filter messages.
 - `fetch_documents(chat_id, tags, limit)`: Use this to get documents from the knowledge base.
 
 HOW TO WORK:

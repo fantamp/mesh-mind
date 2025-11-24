@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     
     # Company
     COMPANY_DOMAINS: List[str] = []
+    
+    # Summary Settings
+    CONVERSATION_GAP_MINUTES: int = 60  # Пауза для определения границы разговора
+    SUMMARY_DEFAULT_LIMIT: int = 50  # Дефолтное количество сообщений для саммари (если не указано)
+    SUMMARY_MAX_MESSAGE_HISTORY: int = 100  # Максимум сообщений для поиска границы разговора
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(PROJECT_ROOT, ".env"),

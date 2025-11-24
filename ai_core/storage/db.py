@@ -66,9 +66,24 @@ async def save_message(msg: Message) -> Message:
         await session.refresh(msg)
         return msg
 
-async def get_messages(chat_id: str, limit: int = 50, offset: int = 0) -> List[Message]:
+async def get_messages(chat_id: str, limit: int = 50, offset: int = 0, since: Optional[datetime] = None) -> List[Message]:
+    """
+    Получить сообщения из чата.
+    
+    Args:
+        chat_id: ID чата
+        limit: Максимальное количество сообщений
+        offset: Смещение для пагинации
+        since: Опциональное время - вернуть только сообщения после этого времени
+    """
     async with async_session() as session:
-        statement = select(Message).where(Message.chat_id == chat_id).order_by(Message.created_at.desc()).offset(offset).limit(limit)
+        statement = select(Message).where(Message.chat_id == chat_id)
+        
+        # Добавить фильтр по времени, если указан
+        if since:
+            statement = statement.where(Message.created_at >= since)
+        
+        statement = statement.order_by(Message.created_at.desc()).offset(offset).limit(limit)
         result = await session.execute(statement)
         return result.scalars().all()
 
@@ -102,3 +117,45 @@ async def save_document_metadata(doc: DocumentMetadata) -> DocumentMetadata:
         await session.commit()
         await session.refresh(doc)
         return doc
+
+async def find_conversation_boundary(chat_id: str, gap_minutes: Optional[int] = None) -> Optional[datetime]:
+    """
+    Находит начало последнего разговора, определяя его как момент после последней паузы > gap_minutes.
+    
+    Args:
+        chat_id: ID чата
+        gap_minutes: Минуты паузы для определения границы (если None, берется из settings.CONVERSATION_GAP_MINUTES)
+    
+    Returns:
+        datetime начала последнего разговора или None, если разговор не найден
+    """
+    from ai_core.common.config import settings
+    from datetime import timedelta
+    
+    # Использовать значение из конфига, если не указано
+    if gap_minutes is None:
+        gap_minutes = settings.CONVERSATION_GAP_MINUTES
+    
+    # Получить последние N сообщений для анализа
+    messages = await get_messages(chat_id, limit=settings.SUMMARY_MAX_MESSAGE_HISTORY)
+    
+    if not messages or len(messages) < 2:
+        # Если сообщений мало, возвращаем None (включим все сообщения)
+        return None
+    
+    # Сообщения отсортированы по убыванию времени (newest first)
+    # Ищем первую паузу > gap_minutes между соседними сообщениями
+    for i in range(len(messages) - 1):
+        current_msg = messages[i]  # Более новое сообщение
+        previous_msg = messages[i + 1]  # Более старое сообщение
+        
+        # Вычислить разницу во времени
+        time_gap = current_msg.created_at - previous_msg.created_at
+        
+        if time_gap > timedelta(minutes=gap_minutes):
+            # Найдена пауза! Возвращаем время начала последнего разговора
+            # (это время более нового сообщения после паузы)
+            return current_msg.created_at
+    
+    # Пауза не найдена - весь history является одним разговором
+    return None
