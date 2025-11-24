@@ -7,9 +7,29 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "DEBUG"
     
     # Paths
-    DB_PATH: str = "data/db/mesh_mind.db"
-    CHROMA_PATH: str = "data/vector_store"
-    MEDIA_PATH: str = "data/media"
+    # Paths
+    # Determine project root (2 levels up from this file: ai_core/common/config.py -> ai_core/common -> ai_core -> root)
+    # Wait, config.py is in ai_core/common.
+    # dirname = ai_core/common
+    # .. = ai_core
+    # ../.. = mesh-mind
+    PROJECT_ROOT: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    
+    @property
+    def DB_PATH(self) -> str:
+        return os.path.join(self.PROJECT_ROOT, "data/db/mesh_mind.db")
+
+    @property
+    def CHROMA_PATH(self) -> str:
+        return os.path.join(self.PROJECT_ROOT, "data/vector_store")
+
+    @property
+    def MEDIA_PATH(self) -> str:
+        return os.path.join(self.PROJECT_ROOT, "data/media")
+
+    @property
+    def DOCS_PATH(self) -> str:
+        return os.path.join(self.PROJECT_ROOT, "data/docs")
     
     # API Keys
     GOOGLE_API_KEY: str
@@ -25,7 +45,7 @@ class Settings(BaseSettings):
     COMPANY_DOMAINS: List[str] = []
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.path.join(PROJECT_ROOT, ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )

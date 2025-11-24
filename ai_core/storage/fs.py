@@ -17,15 +17,8 @@ def _get_storage_path(file_type: str) -> str:
         now = datetime.now(timezone.utc)
         return os.path.join(base_path, "voice", now.strftime("%Y"), now.strftime("%m"), now.strftime("%d"))
     elif file_type == "doc":
-        # Assuming docs go to a sibling directory or specific docs directory
-        # The spec says data/docs/
-        # settings.MEDIA_PATH is data/media.
-        # Let's assume data/docs is at the same level as data/media if we follow the spec strictly.
-        # Or we can put it under data/media/docs.
-        # Spec: "data/docs/"
-        # Config: DB_PATH="data/db/...", MEDIA_PATH="data/media"
-        # Let's use a relative path from the project root for docs to match spec "data/docs/"
-        return "data/docs"
+        # Documents go to data/docs/
+        return settings.DOCS_PATH
     else:
         return os.path.join(base_path, "misc")
 

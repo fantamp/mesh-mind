@@ -102,7 +102,9 @@ async def test_summary_command_success(mock_update, mock_context, mock_api_clien
     mock_api_client.summarize.return_value = {"summary": "Here is the summary."}
     mock_update.effective_chat.id = 123
     
-    await summary_command(mock_update, mock_context)
+    # Need to allow non-whitelisted chats for testing
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+        await summary_command(mock_update, mock_context)
     
     mock_api_client.summarize.assert_called_once_with(chat_id=123)
     # Should reply twice: "Generating..." and then the summary
@@ -112,7 +114,8 @@ async def test_summary_command_success(mock_update, mock_context, mock_api_clien
 @pytest.mark.asyncio
 async def test_ask_command_no_args(mock_update, mock_context):
     mock_context.args = []
-    await ask_command(mock_update, mock_context)
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+        await ask_command(mock_update, mock_context)
     mock_update.message.reply_text.assert_called_once_with("Please provide a question: /ask <your question>")
 
 @pytest.mark.asyncio
@@ -121,7 +124,8 @@ async def test_ask_command_success(mock_update, mock_context, mock_api_client):
     mock_api_client.ask.return_value = {"answer": "AI is Artificial Intelligence."}
     mock_update.effective_chat.id = 123
     
-    await ask_command(mock_update, mock_context)
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+        await ask_command(mock_update, mock_context)
     
     mock_api_client.ask.assert_called_once_with("What is AI?", chat_id=123)
     assert mock_update.message.reply_text.call_count == 2
@@ -134,7 +138,8 @@ async def test_handle_text_message_success(mock_update, mock_context, mock_api_c
     mock_update.effective_user.id = 123
     mock_update.effective_chat.id = 456
     
-    await handle_text_message(mock_update, mock_context)
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+        await handle_text_message(mock_update, mock_context)
     
     mock_api_client.ingest_text.assert_called_once_with(
         "Hello world",
@@ -159,7 +164,8 @@ async def test_handle_voice_message_success(mock_update, mock_context, mock_api_
     # Mock download_to_drive
     mock_file.download_to_drive.return_value = None
     
-    with patch("telegram_bot.main.Path") as mock_path:
+    with patch("telegram_bot.main.is_chat_allowed", return_value=True), \
+         patch("telegram_bot.main.Path") as mock_path:
         mock_path_obj = MagicMock()
         mock_path.return_value = mock_path_obj
         mock_path_obj.__truediv__.return_value = mock_path_obj # Mock / operator

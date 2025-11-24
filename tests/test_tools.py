@@ -32,10 +32,13 @@ def test_fetch_chat_messages_success(mock_run_async):
     mock_msg2.content = "Hi"
     mock_msg2.created_at = datetime(2023, 1, 1, 10, 1, tzinfo=timezone.utc)
     
-    # run_async returns the result of the coroutine
+    # run_async returns the result of the coroutine directly (not a coroutine)
     mock_run_async.return_value = [mock_msg2, mock_msg1] # Newest first usually
     
     result = fetch_chat_messages(chat_id="123")
+    
+    # Verify run_async was called with the coroutine
+    mock_run_async.assert_called_once()
     
     assert "[2023-01-01 10:00] Alice: Hello" in result
     assert "[2023-01-01 10:01] Bob: Hi" in result

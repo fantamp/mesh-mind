@@ -6,6 +6,10 @@ __pycache__
 
 data/*
 !data/.gitkeep
+!data/sample_docs/
 
 # MacOS files
 .DS_Store
+
+# Obsidian
+.obsidian
