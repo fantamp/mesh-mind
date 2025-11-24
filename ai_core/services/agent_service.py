@@ -11,7 +11,6 @@ from ai_core.agents.summarizer.agent import agent as summarizer_agent
 from ai_core.agents.qa.agent import agent as qa_agent
 
 @standard_retry
-@standard_retry
 def run_summarizer(chat_id: str, instruction: str = None, user_id: str = "system", since: str = None, limit: int = None) -> str:
     """
     Runs the Summarizer agent for a specific chat.
@@ -99,9 +98,8 @@ def run_qa(question: str, chat_id: str = None, user_id: str = "default_user") ->
     context_prefix = f"CONTEXT: chat_id='{chat_id}'\n" if chat_id else "CONTEXT: chat_id=None\n"
     full_question = context_prefix + "Question: " + question
     
-    # Use deterministic session ID for conversation continuity if needed, 
-    # or unique if we want stateless. For now, per-user session.
-    session_id = f"qa_session_{user_id}"
+    # Используем chat_id для session_id чтобы сохранить контекст разговора в рамках чата
+    session_id = f"qa_session_{chat_id}" if chat_id else f"qa_session_{user_id}"
     
     return run_agent_sync(
         agent=qa_agent,

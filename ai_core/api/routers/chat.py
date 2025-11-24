@@ -78,7 +78,8 @@ async def ask(
         answer = agent_ask(request.query, user_id=user_id, chat_id=request.chat_id)
         sources = ["Sources are cited in the answer."]
     except Exception as e:
-        answer = f"Error generating answer: {e}"
+        # Возвращаем чистое сообщение об ошибке, чтобы пользователь видел красивое сообщение о квоте
+        answer = str(e)
         sources = []
     
     return AskResponse(answer=answer, sources=sources)

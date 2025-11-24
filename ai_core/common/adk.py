@@ -12,6 +12,7 @@ from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+from google.genai.errors import ClientError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core.exceptions import ResourceExhausted, InternalServerError, ServiceUnavailable
 
@@ -31,14 +32,13 @@ def get_session_service() -> InMemorySessionService:
 
 # Standard retry decorator for agent operations
 # Uses the more robust policy from summarizer (5 attempts)
+# NOTE: ResourceExhausted (429) убран из retry - при исчерпании квоты retry бесполезен
 standard_retry = retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=2, min=4, max=20),
     retry=retry_if_exception_type((
-        ResourceExhausted, 
         InternalServerError, 
         ServiceUnavailable,
-        Exception 
     )),
     reraise=True
 )
@@ -79,12 +79,28 @@ def run_agent_sync(
     )
 
     # 1. Create Session (Async handling)
+    # Проверяем, существует ли сессия - если да, переиспользуем её
     def create_session_task():
+        # Проверяем существование сессии
+        try:
+            existing_session = asyncio.run(_session_service.get_session(
+                app_name=app_name,
+                user_id=user_id,
+                session_id=session_id
+            ))
+            if existing_session:
+                logger.debug(f"Reusing existing session {session_id}")
+                return
+        except Exception:
+            # Сессия не существует, создаём новую
+            pass
+            
         asyncio.run(_session_service.create_session(
             app_name=app_name,
             user_id=user_id,
             session_id=session_id
         ))
+        logger.debug(f"Created new session {session_id}")
 
     try:
         try:
@@ -101,7 +117,7 @@ def run_agent_sync(
             create_session_task()
             
     except Exception as e:
-        logger.error(f"Failed to create session: {e}")
+        logger.error(f"Failed to handle session: {e}")
         raise
 
     # 2. Run Agent (Sync Runner.run handles its own loop if needed, but returns generator)
@@ -130,5 +146,52 @@ def run_agent_sync(
         return response_text
         
     except Exception as e:
+        # Проверяем цепочку исключений на наличие ClientError (429)
+        # ADK может оборачивать ошибки в свои типы (например _ResourceExhaustedError)
+        cause = e
+        client_error = None
+        
+        # Ищем ClientError в цепочке причин
+        while cause:
+            if isinstance(cause, ClientError):
+                client_error = cause
+                break
+            cause = getattr(cause, '__cause__', None) or getattr(cause, '__context__', None)
+            
+        if client_error and client_error.status_code == 429:
+            error_details = client_error.response_json.get('error', {})
+            message = error_details.get('message', 'Unknown quota error')
+            details = error_details.get('details', [])
+            
+            # Извлекаем полезную информацию
+            quota_info = []
+            for detail in details:
+                if detail.get('@type') == 'type.googleapis.com/google.rpc.QuotaFailure':
+                    for violation in detail.get('violations', []):
+                        quota_info.append(
+                            f"- Модель: {violation.get('quotaDimensions', {}).get('model', 'unknown')}\n"
+                            f"- Квота: {violation.get('quotaMetric', 'unknown')}\n"
+                            f"- Лимит: {violation.get('quotaValue', 'unknown')}"
+                        )
+                elif detail.get('@type') == 'type.googleapis.com/google.rpc.RetryInfo':
+                    retry_delay = detail.get('retryDelay', '')
+                    quota_info.append(f"- Retry after: {retry_delay}")
+            
+            quota_details = "\n".join(quota_info) if quota_info else "Нет дополнительных деталей"
+            
+            error_message = (
+                f"❌ Ошибка: квота API исчерпана, попробуйте позже\n\n"
+                f"Сообщение API: {message}\n\n"
+                f"Технические детали:\n{quota_details}"
+            )
+            
+            logger.warning(f"ResourceExhausted for agent {agent.name}: {error_message}")
+            raise Exception(error_message) from client_error
+            
+        # Игнорируем ошибку закрытого event loop при завершении
+        if isinstance(e, RuntimeError) and "Event loop is closed" in str(e):
+            logger.debug("Ignored 'Event loop is closed' error during cleanup")
+            return response_text if response_text else "Agent finished but loop closed early."
+
         logger.error(f"Error during agent execution: {e}")
         raise
