@@ -31,7 +31,9 @@ def run_summarizer(chat_id: str, messages: List[DomainMessage], instruction: str
     # Format messages
     formatted_messages = []
     for msg in messages:
-        timestamp = msg.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        # Support both Message (created_at) and DomainMessage (timestamp)
+        dt = getattr(msg, 'timestamp', None) or getattr(msg, 'created_at', None)
+        timestamp = dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "Unknown time"
         formatted_messages.append(f"[{timestamp}] {msg.author_name}: {msg.content}")
     
     messages_text = "\n".join(formatted_messages)
