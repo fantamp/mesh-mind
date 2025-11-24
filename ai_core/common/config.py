@@ -36,10 +36,10 @@ class Settings(BaseSettings):
     
     # Models
     GEMINI_MODEL_FAST: str = "gemini-2.5-flash"
-    GEMINI_MODEL_SMART: str = "gemini-2.5-pro"
+    GEMINI_MODEL_SMART: str = GEMINI_MODEL_FAST
     # GEMINI_MODEL_FAST: str = "gemini-2.0-flash" # больше лимиты, ок для тестов
     # GEMINI_MODEL_SMART: str = "gemini-2.0-flash" # больше лимиты, ок для тестов
-    
+
     
     # Company
     COMPANY_DOMAINS: List[str] = []
