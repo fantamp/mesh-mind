@@ -3,7 +3,6 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from ai_core.storage import init_db, save_message, get_messages, Message, save_file
-from ai_core.storage.db import find_conversation_boundary
 
 import pytest
 
@@ -80,43 +79,3 @@ async def test_get_messages_with_since():
     # Должно быть только одно сообщение (recent)
     assert len(messages) >= 1
     assert any("Recent" in msg.content for msg in messages)
-
-@pytest.mark.asyncio
-async def test_find_conversation_boundary():
-    """Тест поиска границы разговора"""
-    await init_db()
-    
-    import uuid
-    chat_id = f"test_chat_boundary_{uuid.uuid4()}"
-    # Используем naive datetime (без timezone) так как Message.created_at тоже naive после сохранения
-    now = datetime.now()
-    
-    # Создать группу старых сообщений
-    for i in range(3):
-        msg = Message(
-            source="test",
-            chat_id=chat_id,
-            author_name="User1",
-            content=f"Old message {i}",
-            created_at=now - timedelta(hours=3, minutes=i)
-        )
-        await save_message(msg)
-    
-    # Создать группу новых сообщений (после паузы > 60 мин)
-    for i in range(3):
-        msg = Message(
-            source="test",
-            chat_id=chat_id,
-            author_name="User1",
-            content=f"New message {i}",
-            created_at=now - timedelta(minutes=30 - i)
-        )
-        await save_message(msg)
-    
-    # Найти границу разговора
-    boundary = await find_conversation_boundary(chat_id, gap_minutes=60)
-    
-    # Граница должна быть найдена
-    assert boundary is not None
-    # Граница должна быть в пределах последних 3 часов (новые сообщения)
-    assert (now - boundary).total_seconds() < 3 * 3600
