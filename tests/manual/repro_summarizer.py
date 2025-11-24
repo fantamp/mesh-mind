@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from ai_core.common.models import DomainMessage
 # Import summarizer - this will load the module and instantiate the agent/runner
-from ai_core.agents import summarizer
+from ai_core.services.agent_service import run_summarizer as summarize
 
 def test_summarize():
     print("Testing summarize with Message object...")
@@ -31,9 +31,10 @@ def test_summarize():
     
     # Patch the runner's run method on the INSTANCE used in the module
     # summarizer._summarizer_runner is the instance
-    with patch.object(summarizer._summarizer_runner, 'run', return_value=[mock_event]):
+    # Patch run_agent_sync in agent_service
+    with patch('ai_core.services.agent_service.run_agent_sync', return_value="Summary generated successfully."):
         try:
-            result = summarizer.summarize([msg])
+            result = summarize(chat_id="test_chat", messages=[msg])
             print(f"Success! Result: {result}")
         except AttributeError as e:
             print(f"Failed with AttributeError: {e}")

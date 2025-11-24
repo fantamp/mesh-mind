@@ -61,13 +61,17 @@ def test_search_knowledge_base_success(mock_vector_store):
     assert "(source: wiki)" in result
 
 def test_fetch_documents_success(mock_vector_store):
-    mock_vector_store.get_documents.return_value = ["Doc A", "Doc B"]
+    mock_vector_store.get_documents.return_value = [
+        {"content": "Doc A", "metadata": {"filename": "a.txt"}},
+        {"content": "Doc B", "metadata": {"filename": "b.txt"}}
+    ]
     
     result = fetch_documents("chat_id", tags="tag1")
     
-    assert "Doc A" in result
-    assert "Doc B" in result
-    assert "---" in result
+    assert len(result) == 2
+    assert result[0].content == "Doc A"
+    assert result[1].content == "Doc B"
+    assert result[0].filename == "a.txt"
 
 def test_fetch_chat_messages_with_since(mock_run_async):
     """Test fetching messages with since filter."""

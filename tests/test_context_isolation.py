@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from ai_core.rag.vector_db import VectorDB
 from ai_core.services.agent_service import run_qa as ask_question
 from ai_core.services.agent_service import run_document_summarizer as summarize_documents
+from ai_core.common.models import Document
 import re
 
 # Mock implementation of run_agent_sync that simulates agent behavior
@@ -14,12 +15,13 @@ def mock_run_agent_sync(agent, user_message, user_id=None, session_id=None, app_
     
     vector_db = VectorDB()
     
-    if "summarize the documents" in user_message:
-        # Simulate summarizer: fetch all docs for chat_id
-        # Since VectorDB doesn't have "get all", we search with a generic query
-        results = vector_db.search("secret code", n_results=10, chat_id=chat_id)
-        if results and results.get('documents') and results['documents'][0]:
-            return f"Summary based on: {', '.join(results['documents'][0])}"
+    if "summarize the following documents" in user_message:
+        # Extract content from the message itself since we are now pushing data
+        # The prompt format is: "Please summarize the following documents ... \n\n{docs_text}"
+        if "The secret code for Chat A is ALPHA" in user_message:
+             return "Summary based on: The secret code for Chat A is ALPHA."
+        elif "The secret code for Chat B is BETA" in user_message:
+             return "Summary based on: The secret code for Chat B is BETA."
         return "No documents found."
         
     else:
@@ -69,13 +71,16 @@ async def test_context_isolation():
         assert "ALPHA" not in answer_b
         
         # Test Summarizer for Chat A
-        summary_a = summarize_documents(chat_id=chat_id_a)
+        # We need to pass documents now
+        docs_a = [Document(filename="doc_a", content="The secret code for Chat A is ALPHA.")]
+        summary_a = summarize_documents(chat_id=chat_id_a, documents=docs_a)
         print(f"Summary A: {summary_a}")
         assert "ALPHA" in summary_a
         assert "BETA" not in summary_a
         
         # Test Summarizer for Chat B
-        summary_b = summarize_documents(chat_id=chat_id_b)
+        docs_b = [Document(filename="doc_b", content="The secret code for Chat B is BETA.")]
+        summary_b = summarize_documents(chat_id=chat_id_b, documents=docs_b)
         print(f"Summary B: {summary_b}")
         assert "BETA" in summary_b
         assert "ALPHA" not in summary_b

@@ -7,6 +7,7 @@ from ai_core.api.models import SummarizeRequest, SummarizeResponse, AskRequest, 
 from ai_core.storage.db import get_chat_state, get_messages, update_chat_state
 from ai_core.rag.vector_db import VectorDB
 from ai_core.services.agent_service import run_qa as agent_ask, run_document_summarizer, run_summarizer
+from ai_core.tools.knowledge_base import fetch_documents
 from ai_core.common.models import DomainMessage
 
 router = APIRouter()
@@ -21,7 +22,8 @@ async def summarize(
     if request.scope == "documents":
         # Summarize documents
         try:
-            summary_text = run_document_summarizer(chat_id=chat_id, tags=request.tags)
+            documents = fetch_documents(chat_id=chat_id, tags=request.tags)
+            summary_text = run_document_summarizer(chat_id=chat_id, documents=documents)
         except Exception as e:
             summary_text = f"Error generating document summary: {e}"
         return SummarizeResponse(summary=summary_text)
@@ -52,7 +54,7 @@ async def summarize(
         from loguru import logger
         logger.info(f"Calling run_summarizer for chat_id={chat_id}")
         
-        summary_text = run_summarizer(chat_id=chat_id, user_id="api_user", since=request.since_datetime, limit=request.limit)
+        summary_text = run_summarizer(chat_id=chat_id, messages=messages, user_id="api_user")
         logger.info("run_summarizer completed successfully")
     except Exception as e:
         logger.error(f"run_summarizer failed: {e}")

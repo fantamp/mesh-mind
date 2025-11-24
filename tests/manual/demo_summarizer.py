@@ -12,7 +12,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")
 sys.path.append(project_root)
 
 from datetime import datetime, timezone, timedelta
-from ai_core.agents.summarizer import summarize
+from ai_core.services.agent_service import run_summarizer as summarize
 from ai_core.common.models import DomainMessage
 
 
@@ -113,7 +113,7 @@ def main():
     
     print("\n3. Генерирую саммари через Summarizer Agent...")
     try:
-        summary = summarize(messages)
+        summary = summarize(chat_id="demo_chat", messages=messages)
         
         print("\n4. РЕЗУЛЬТАТ - Саммари:")
         print("=" * 80)

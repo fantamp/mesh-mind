@@ -1,6 +1,7 @@
 from typing import List, Optional
 from ai_core.rag.vector_db import VectorDB
 from ai_core.common.logging import logger
+from ai_core.common.models import Document
 
 # Initialize Vector Store once
 _vector_store = VectorDB()
@@ -39,7 +40,7 @@ def search_knowledge_base(query: str, chat_id: str) -> str:
         logger.error(f"Error searching knowledge base: {e}")
         return f"Search error: {str(e)}"
 
-def fetch_documents(chat_id: str, tags: Optional[str] = None, limit: int = 20) -> str:
+def fetch_documents(chat_id: str, tags: Optional[str] = None, limit: int = 20) -> List[Document]:
     """
     Fetches documents from the knowledge base for a specific chat, optionally filtered by tags.
     Useful for summarizing accumulated knowledge.
@@ -50,7 +51,7 @@ def fetch_documents(chat_id: str, tags: Optional[str] = None, limit: int = 20) -
         limit: Maximum number of documents to retrieve.
 
     Returns:
-        A string containing the combined text of the documents.
+        A list of Document objects.
     """
     logger.info(f"Fetching documents for chat_id={chat_id}, tags={tags}")
     
@@ -60,16 +61,26 @@ def fetch_documents(chat_id: str, tags: Optional[str] = None, limit: int = 20) -
         if len(tag_list) == 1:
             where = {"tags": {"$contains": tag_list[0]}}
         elif len(tag_list) > 1:
-             where = {"$or": [{"tags": {"$contains": tag}} for tag in tag_list]}
+            where = {"$or": [{"tags": {"$contains": tag}} for tag in tag_list]}
 
     try:
-        documents = _vector_store.get_documents(limit=limit, where=where, chat_id=chat_id)
+        results = _vector_store.get_documents(limit=limit, where=where, chat_id=chat_id)
         
-        if not documents:
-            return "No documents found."
+        documents = []
+        for res in results:
+            content = res.get("content", "")
+            metadata = res.get("metadata", {})
+            filename = metadata.get("filename", "unknown_file")
+            # Create Document object
+            doc = Document(
+                filename=filename,
+                content=content,
+                doc_metadata=metadata
+            )
+            documents.append(doc)
             
-        return "\n\n---\n\n".join(documents)
+        return documents
 
     except Exception as e:
         logger.error(f"Error fetching documents: {e}")
-        return f"Error fetching documents: {str(e)}"
+        return []

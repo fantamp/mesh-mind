@@ -132,7 +132,7 @@ class VectorDB:
         )
         return results
 
-    def get_documents(self, limit: int = 100, where: Dict[str, Any] = None, chat_id: str = None) -> List[str]:
+    def get_documents(self, limit: int = 100, where: Dict[str, Any] = None, chat_id: str = None) -> List[Dict[str, Any]]:
         """
         Get documents from the vector store based on metadata filters.
         """
@@ -157,10 +157,16 @@ class VectorDB:
 
         results = self.collection.get(
             limit=limit,
-            where=final_where
+            where=final_where,
+            include=["documents", "metadatas"]
         )
         
-        return results['documents'] if results and 'documents' in results else []
+        output = []
+        if results and results.get('documents') and results.get('metadatas'):
+            for doc, meta in zip(results['documents'], results['metadatas']):
+                output.append({"content": doc, "metadata": meta})
+                
+        return output
 
     def delete(self, where: Dict[str, Any] = None):
         """

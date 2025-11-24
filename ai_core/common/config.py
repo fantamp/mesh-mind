@@ -6,13 +6,6 @@ class Settings(BaseSettings):
     ENV: Literal["dev", "prod"] = "dev"
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "DEBUG"
     
-    # Paths
-    # Paths
-    # Determine project root (2 levels up from this file: ai_core/common/config.py -> ai_core/common -> ai_core -> root)
-    # Wait, config.py is in ai_core/common.
-    # dirname = ai_core/common
-    # .. = ai_core
-    # ../.. = mesh-mind
     PROJECT_ROOT: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
     @property
@@ -37,8 +30,6 @@ class Settings(BaseSettings):
     # Models
     GEMINI_MODEL_FAST: str = "gemini-2.5-flash"
     GEMINI_MODEL_SMART: str = GEMINI_MODEL_FAST
-    # GEMINI_MODEL_FAST: str = "gemini-2.0-flash" # больше лимиты, ок для тестов
-    # GEMINI_MODEL_SMART: str = "gemini-2.0-flash" # больше лимиты, ок для тестов
 
     
     # Company
