@@ -278,3 +278,7 @@ pytest tests/ -v
 - [Multi-Agent Systems](https://google.github.io/adk-docs/agents/multi-agents/)
 - [Evaluation](https://google.github.io/adk-docs/evaluation/)
 - [Examples on GitHub](https://github.com/google/adk-python/tree/main/examples)
+
+## Временное допущение (MVP)
+
+Для сокращения сроков MVP допускается использовать прямые вызовы `google.generativeai` в слоях векторизации и транскрипции (см. `ai_core/rag/vector_db.py`, `ai_core/common/transcription.py`). Это исключение временное: после стабилизации потока через оркестратор необходимо заменить на ADK‑совместимый слой эмбеддингов и мультимодальных вызовов.
