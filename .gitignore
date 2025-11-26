@@ -13,3 +13,6 @@ data/*
 
 # Obsidian
 .obsidian
+
+# tmp
+tmp/
