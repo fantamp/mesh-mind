@@ -26,6 +26,19 @@ async_session = sessionmaker(
 # Models
 
 class Message(SQLModel, table=True):
+    """
+    Модель сообщения для хранения в базе данных (Persistence Model).
+
+    Описывает структуру таблицы `messages` в основной базе данных проекта.
+
+    Используется для:
+    - Долговременного сохранения истории чатов.
+    - Выборки истории сообщений для формирования контекста (памяти) агентов.
+    - Работы с базой данных через SQLAlchemy/SQLModel.
+
+    Ключевое отличие от DomainMessage: содержит поле `chat_id` для привязки к конкретному чату
+    и используется исключительно в слое хранения данных (storage).
+    """
     __tablename__ = "messages"
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)

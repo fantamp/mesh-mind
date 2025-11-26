@@ -5,6 +5,20 @@ from sqlalchemy import JSON
 import uuid
 
 class DomainMessage(SQLModel, table=True):
+    """
+    Модель сообщения предметной области (Domain Model).
+
+    Описывает структуру сообщения, используемую в бизнес-логике приложения,
+    API-эндпоинтах и пользовательском интерфейсе.
+
+    Используется для:
+    - Унификации формата сообщений между различными компонентами (Telegram, UI, API).
+    - Передачи данных между агентами и сервисами.
+    - Отображения сообщений в UI.
+
+    Отличается от модели хранения (storage.db.Message) тем, что является
+    абстракцией уровня приложения, а не уровня базы данных.
+    """
     __tablename__ = "message" # Explicit table name to avoid migration issues if possible, or just let it default to domainmessage
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     source: str  # e.g., "telegram", "email"
