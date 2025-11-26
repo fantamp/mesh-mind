@@ -25,3 +25,6 @@ Do not try to summarize the text yourself as the tool is available.
         fetch_messages, 
         AgentTool(agent=simple_summarizer.clone())],
 )
+
+# ADK ожидает root_agent на уровне модуля
+root_agent = agent

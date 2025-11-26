@@ -1,0 +1,108 @@
+{
+  "eval_set_id": "chat_observer_fetch_messages_v1",
+  "description": "Regression eval for chat_observer tool usage and filters",
+  "eval_cases": [
+    {
+      "eval_id": "happy_limit",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              { "text": "CONTEXT: chat_id='eval_chat_observer'\nПокажи последние 3 сообщения" }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "eval_chat_observer",
+                  "limit": 3
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "since_filter",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              { "text": "CONTEXT: chat_id='eval_chat_observer'\nПокажи сообщения начиная с 2025-11-25T00:00:00Z" }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "eval_chat_observer",
+                  "since": "2025-11-25T00:00:00Z"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "invalid_date",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              { "text": "CONTEXT: chat_id='eval_chat_observer'\nПокажи сообщения после 2025-13-01T00:00:00Z" }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": []
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [ {"text": "Error: Invalid date format for 'since'"} ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "empty_chat",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              { "text": "CONTEXT: chat_id='empty_chat_observer'\nПокажи сообщения за неделю начиная с 2025-11-19T00:00:00Z" }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "empty_chat_observer",
+                  "since": "2025-11-19T00:00:00Z"
+                }
+              }
+            ],
+            "intermediate_responses": [
+              [
+                "chat_observer",
+                [ {"text": "No messages found."} ]
+              ]
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [ {"text": "No messages found."} ]
+          }
+        }
+      ]
+    }
+  ]
+}

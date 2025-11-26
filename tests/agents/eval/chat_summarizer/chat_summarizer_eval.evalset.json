@@ -1,0 +1,54 @@
+{
+  "eval_set_id": "chat_summarizer_eval_v1",
+  "description": "Chat summarizer should call fetch_messages",
+  "eval_cases": [
+    {
+      "eval_id": "summary_last",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {"text": "CONTEXT: chat_id='eval_chat_summarizer' Суммаризируй последние сообщения"}
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "eval_chat_summarizer",
+                  "limit": 50
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "summary_since",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {"text": "CONTEXT: chat_id='eval_chat_summarizer' Суммаризируй сообщения после 2025-11-25T00:00:00Z"}
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "eval_chat_summarizer",
+                  "since": "2025-11-25T00:00:00Z"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

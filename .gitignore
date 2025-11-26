@@ -14,5 +14,6 @@ data/*
 # Obsidian
 .obsidian
 
-# tmp
+# временные файлы
 tmp/
+.adk
