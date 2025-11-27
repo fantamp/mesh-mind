@@ -33,8 +33,8 @@ agent = LlmAgent(
         chat_id: str,
         limit: int = 50,
         since: Optional[str] = None,
-        author_id: Optional[str] = None, # user id
-        author_nick: Optional[str] = None, # user nickname
+        author_id: Optional[str] = None, # used_id. In telegram for example, usually have only numbers
+        author_nick: Optional[str] = None, # user nickname. In telegram for example, usually it is starts with "@" and have only letters and numbers
         contains: Optional[str] = None # search in message content
 
     EXAMPLES:
