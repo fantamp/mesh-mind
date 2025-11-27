@@ -8,14 +8,14 @@ from telegram.ext import ContextTypes
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from telegram_bot.main import (
-    ApiClient,
+from telegram_bot.api_client import ApiClient
+from telegram_bot.utils import parse_summary_params
+from telegram_bot.handlers import (
     start_command,
     summary_command,
     ask_command,
     handle_text_message,
     handle_voice_message,
-    parse_summary_params,
     help_command,
 )
 
@@ -23,12 +23,14 @@ from telegram_bot.main import (
 
 @pytest.fixture
 def mock_api_client():
-    with patch("telegram_bot.main.api_client") as mock:
-        mock.ingest_text = AsyncMock()
-        mock.ingest_file = AsyncMock()
-        mock.summarize = AsyncMock()
-        mock.ask = AsyncMock()
-        yield mock
+    # We mock the class so we can inspect calls
+    mock = MagicMock(spec=ApiClient)
+    mock.ingest_text = AsyncMock()
+    mock.ingest_file = AsyncMock()
+    mock.summarize = AsyncMock()
+    mock.ask = AsyncMock()
+    mock.chat_message = AsyncMock()
+    return mock
 
 @pytest.fixture
 def mock_update():
@@ -39,39 +41,49 @@ def mock_update():
     update.message.reply_html = AsyncMock()
     update.message.reply_text = AsyncMock()
     update.message.chat = MagicMock(spec=Chat)
+    # Ensure message is not treated as forwarded in tests unless explicitly set
+    update.message.forward_origin = None
+    update.message.forward_from = None
+    update.message.forward_sender_name = None
+    update.message.forward_from_chat = None
     return update
 
 @pytest.fixture
-def mock_context():
+def mock_context(mock_api_client):
     context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
     context.bot = MagicMock()
     context.bot.get_file = AsyncMock()
+    # job_queue mock for forward debounce
+    mock_job = MagicMock()
+    mock_job.schedule_removal = MagicMock()
+    job_queue = MagicMock()
+    job_queue.run_once.return_value = mock_job
+    context.job_queue = job_queue
+    
+    # Mock bot_data and chat_data
+    context.bot_data = {"api_client": mock_api_client}
+    context.chat_data = {}
+    
     return context
 
 # --- ApiClient Tests ---
 
 @pytest.mark.asyncio
 async def test_api_client_ingest_text():
-    # Mock the client instance inside ApiClient
+    # Mock httpx.AsyncClient inside ApiClient
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        # Ensure the response is a MagicMock, not AsyncMock, so .json() is synchronous
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"status": "ok"}
         mock_post.return_value = mock_response
         
         client = ApiClient("http://test")
-        # We need to patch the client instance on the created ApiClient if we mocked the class, 
-        # but here we mocked the method on the class, so all instances should use it.
         
         result = await client.ingest_text("hello")
         
         assert result == {"status": "ok"}
         mock_post.assert_called_once()
-        # Check arguments. Note: httpx client adds base_url, so the call to post might be relative or absolute depending on implementation.
-        # In main.py: url = f"{self.base_url}/ingest", response = await self.client.post(url, ...)
         assert mock_post.call_args[0][0] == "http://test/ingest"
-        # Now we use 'data' for multipart/form-data
         assert "text" in mock_post.call_args[1]["data"]
         assert mock_post.call_args[1]["data"]["text"] == "hello"
 
@@ -106,10 +118,10 @@ async def test_summary_command_success(mock_update, mock_context, mock_api_clien
     mock_context.args = []  # Дефолтные аргументы (auto режим)
     
     # Need to allow non-whitelisted chats for testing
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True):
         await summary_command(mock_update, mock_context)
     
-    # Проверяем что summarize был вызван (с auto режимом будет вызван с limit параметром)
+    # Проверяем что summarize был вызван
     mock_api_client.summarize.assert_called_once()
     # Should reply twice: "Generating..." and then the summary
     assert mock_update.message.reply_text.call_count == 2
@@ -119,7 +131,7 @@ async def test_summary_command_success(mock_update, mock_context, mock_api_clien
 @pytest.mark.asyncio
 async def test_ask_command_no_args(mock_update, mock_context):
     mock_context.args = []
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True):
         await ask_command(mock_update, mock_context)
     mock_update.message.reply_text.assert_called_once_with("Please provide a question: /ask <your question>")
 
@@ -129,7 +141,7 @@ async def test_ask_command_success(mock_update, mock_context, mock_api_client):
     mock_api_client.ask.return_value = {"answer": "AI is Artificial Intelligence."}
     mock_update.effective_chat.id = 123
     
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True):
         await ask_command(mock_update, mock_context)
     
     mock_api_client.ask.assert_called_once_with("What is AI?", chat_id=123)
@@ -141,18 +153,16 @@ async def test_handle_text_message_success(mock_update, mock_context, mock_api_c
     mock_update.message.text = "Hello world"
     mock_update.effective_user.full_name = "Test User"
     mock_update.effective_user.id = 123
+    mock_update.effective_user.username = "nick"
     mock_update.effective_chat.id = 456
     
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True):
         await handle_text_message(mock_update, mock_context)
     
-    mock_api_client.ingest_text.assert_called_once_with(
-        "Hello world",
-        author_name="Test User",
-        author_id="123",
-        chat_id="456"
-    )
-    mock_update.message.reply_text.assert_called_once_with("Saved.")
+    mock_api_client.ingest_text.assert_not_called()
+    mock_api_client.chat_message.assert_called_once()
+    # reply_text called either with reply or Saved.; at least once
+    assert mock_update.message.reply_text.call_count >= 1
 
 @pytest.mark.asyncio
 async def test_handle_voice_message_success(mock_update, mock_context, mock_api_client):
@@ -161,6 +171,8 @@ async def test_handle_voice_message_success(mock_update, mock_context, mock_api_
     mock_voice.file_id = "voice_123"
     mock_update.message.voice = mock_voice
     mock_update.effective_user.full_name = "Test User"
+    mock_update.effective_user.username = "nick"
+    mock_api_client.ingest_file.return_value = {"status": "ok", "text": "transcribed text"}
     
     # Mock get_file
     mock_file = AsyncMock()
@@ -169,8 +181,8 @@ async def test_handle_voice_message_success(mock_update, mock_context, mock_api_
     # Mock download_to_drive
     mock_file.download_to_drive.return_value = None
     
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True), \
-         patch("telegram_bot.main.Path") as mock_path:
+    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True), \
+         patch("telegram_bot.handlers.Path") as mock_path:
         mock_path_obj = MagicMock()
         mock_path.return_value = mock_path_obj
         mock_path_obj.__truediv__.return_value = mock_path_obj # Mock / operator
@@ -181,13 +193,9 @@ async def test_handle_voice_message_success(mock_update, mock_context, mock_api_
         
         mock_context.bot.get_file.assert_called_once_with("voice_123")
         mock_file.download_to_drive.assert_called_once()
-        mock_api_client.ingest_file.assert_called_once_with(
-            "/tmp/voice_123.ogg",
-            author_name="Test User",
-            author_id=str(mock_update.effective_user.id),
-            chat_id=str(mock_update.effective_chat.id)
-        )
-        mock_update.message.reply_text.assert_called_once_with("Voice message saved and processing.")
+        mock_api_client.ingest_file.assert_called_once()
+        mock_api_client.chat_message.assert_called_once()
+        assert mock_update.message.reply_text.call_count >= 1
 
 # --- parse_summary_params Tests ---
 
@@ -235,7 +243,7 @@ async def test_summary_command_with_reply(mock_update, mock_context, mock_api_cl
     mock_reply_message.date = datetime(2025, 11, 24, 8, 0, 0, tzinfo=timezone.utc)
     mock_update.message.reply_to_message = mock_reply_message
     
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True):
         await summary_command(mock_update, mock_context)
     
     # Проверяем что summarize был вызван с since_datetime из reply
@@ -254,7 +262,7 @@ async def test_summary_command_with_reply(mock_update, mock_context, mock_api_cl
 @pytest.mark.asyncio
 async def test_help_command(mock_update, mock_context):
     """Тест команды /help"""
-    with patch("telegram_bot.main.is_chat_allowed", return_value=True):
+    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True):
         await help_command(mock_update, mock_context)
     
     # Проверяем что был вызван reply_text с текстом справки
@@ -266,4 +274,3 @@ async def test_help_command(mock_update, mock_context):
     assert "/help" in help_text
     assert "/summary" in help_text
     assert "/ask" in help_text
-

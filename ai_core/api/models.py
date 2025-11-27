@@ -4,6 +4,20 @@ from typing import List, Optional, Dict, Any, Union
 class IngestResponse(BaseModel):
     status: str
     id: str
+    text: Optional[str] = None  # возвращаем текст транскрипции для голосовых (если есть)
+
+class ChatMessageRequest(BaseModel):
+    chat_id: str
+    user_id: str
+    user_name: str
+    user_nick: Optional[str] = None
+    text: str
+    message_id: str
+    reply_to_message_id: Optional[str] = None
+    skip_save: bool = False
+
+class ChatMessageResponse(BaseModel):
+    reply: Optional[str] = None
 
 class SummarizeRequest(BaseModel):
     chat_id: Union[str, int]

@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from ai_core.services.agent_service import run_qa as ask_question
 from ai_core.services.agent_service import run_document_summarizer as summarize_documents
 from ai_core.common.config import settings
-from ai_core.common.models import DomainMessage
+from ai_core.common.models import Message
 from ai_core.rag.vector_db import VectorDB
 import datetime
 

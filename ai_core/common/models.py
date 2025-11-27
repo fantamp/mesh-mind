@@ -4,30 +4,30 @@ from sqlmodel import SQLModel, Field
 from sqlalchemy import JSON
 import uuid
 
-class DomainMessage(SQLModel, table=True):
+from sqlalchemy import Index
+
+class Message(SQLModel, table=True):
     """
-    Модель сообщения предметной области (Domain Model).
-
-    Описывает структуру сообщения, используемую в бизнес-логике приложения,
-    API-эндпоинтах и пользовательском интерфейсе.
-
-    Используется для:
-    - Унификации формата сообщений между различными компонентами (Telegram, UI, API).
-    - Передачи данных между агентами и сервисами.
-    - Отображения сообщений в UI.
-
-    Отличается от модели хранения (storage.db.Message) тем, что является
-    абстракцией уровня приложения, а не уровня базы данных.
+    Unified Message model for both domain logic and database persistence.
     """
-    __tablename__ = "message" # Explicit table name to avoid migration issues if possible, or just let it default to domainmessage
+    __tablename__ = "messages"
+    
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    source: str  # e.g., "telegram", "email"
-    author_id: str
-    author_name: str
+    source: str = Field(index=True) # e.g., "telegram", "email"
+    chat_id: str = Field(index=True)
+    author_id: Optional[str] = Field(default=None, index=True)
+    author_nick: Optional[str] = Field(default=None, index=True)
+    author_name: Optional[str] = None
     content: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     media_path: Optional[str] = None
     media_type: Optional[str] = None # voice, document
+
+    __table_args__ = (
+        Index("idx_messages_chat_author", "chat_id", "author_id"),
+        Index("idx_messages_chat_nick", "chat_id", "author_nick"),
+        Index("idx_messages_chat_created", "chat_id", "created_at"),
+    )
 
 class Document(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)

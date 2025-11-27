@@ -3,7 +3,7 @@ import os
 
 # sys.path hack removed
 
-from ai_core.common import settings, setup_logging, DomainMessage, Document
+from ai_core.common import settings, setup_logging, Message, Document
 from loguru import logger
 
 def test_common_lib():
@@ -27,15 +27,16 @@ def test_common_lib():
     
     # 3. Test Models
     print("\n3. Testing Models:")
-    msg = DomainMessage(
+    msg = Message(
         source="telegram",
+        chat_id="test_chat",
         author_id="123",
         author_name="Test User",
         content="Hello World"
     )
     print(f"   Message created: {msg}")
     assert msg.id is not None
-    assert msg.timestamp is not None
+    assert msg.created_at is not None
     
     doc = Document(
         filename="test.txt",

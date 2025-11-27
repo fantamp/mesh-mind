@@ -157,14 +157,19 @@ session_service = InMemorySessionService()
 **Назначение**: Получение сообщений из SQLite БД
 
 **Параметры**:
-- `chat_id: str` — ID чата (обязательно)
+- `chat_id: str` — ID чата (обязательно, для изоляции)
 - `limit: int` — количество сообщений
-- `since: datetime` (опционально) — с какой даты
-- `author: str` (опционально) — автор сообщений
+- `since: datetime | str` (опционально) — с какой даты/времени
+- `author_id: str` (опционально) — фильтр по id пользователя
+- `author_nick: str` (опционально) — фильтр по никнейму (username без @)
+- `contains: str` (опционально) — подстрока для поиска по тексту
 
-**Возвращает**: `List[Message]`
+**Возвращает**: Читаемый текстовый список вида `[YYYY-MM-DD HH:MM:SS] Имя Фамилия (@username): сообщение` или `"No messages found."`
 
-**Референс**: Смотри `ai_core/storage/db.get_messages()`
+**Референс**: Смотри `ai_core/tools/messages.py`
+
+**Метаданные при ingest**:
+- В VectorDB и SQLite сохранять `author_id`, `author_nick`, `author_name` если доступны; допускаются null. Формат вывода выбирает доступные поля (ник > id > пусто).
 
 ### 2. search_knowledge_base
 

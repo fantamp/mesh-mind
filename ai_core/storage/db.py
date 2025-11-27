@@ -2,6 +2,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
 from sqlmodel import Field, SQLModel, select
+from sqlalchemy import Index
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -25,30 +26,7 @@ async_session = sessionmaker(
 
 # Models
 
-class Message(SQLModel, table=True):
-    """
-    Модель сообщения для хранения в базе данных (Persistence Model).
-
-    Описывает структуру таблицы `messages` в основной базе данных проекта.
-
-    Используется для:
-    - Долговременного сохранения истории чатов.
-    - Выборки истории сообщений для формирования контекста (памяти) агентов.
-    - Работы с базой данных через SQLAlchemy/SQLModel.
-
-    Ключевое отличие от DomainMessage: содержит поле `chat_id` для привязки к конкретному чату
-    и используется исключительно в слое хранения данных (storage).
-    """
-    __tablename__ = "messages"
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    source: str = Field(index=True) # e.g., "telegram", "user"
-    chat_id: str = Field(index=True)
-    author_name: str
-    content: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
-    media_path: Optional[str] = None
-    media_type: Optional[str] = None
+from ai_core.common.models import Message
 
 class ChatState(SQLModel, table=True):
     __tablename__ = "chat_state"
@@ -70,6 +48,8 @@ class DocumentMetadata(SQLModel, table=True):
 async def init_db():
     """Creates tables if they don't exist."""
     async with engine.begin() as conn:
+        # Для тестов/разработки: создаем таблицы если нет (MVP)
+        # await conn.run_sync(SQLModel.metadata.drop_all) # REMOVED: Data safety
         await conn.run_sync(SQLModel.metadata.create_all)
 
 async def save_message(msg: Message) -> Message:
@@ -79,7 +59,15 @@ async def save_message(msg: Message) -> Message:
         await session.refresh(msg)
         return msg
 
-async def get_messages(chat_id: str, limit: int = 50, offset: int = 0, since: Optional[datetime] = None) -> List[Message]:
+async def get_messages(
+    chat_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    since: Optional[datetime] = None,
+    author_id: Optional[str] = None,
+    author_nick: Optional[str] = None,
+    contains: Optional[str] = None
+) -> List[Message]:
     """
     Получить сообщения из чата.
     
@@ -88,6 +76,9 @@ async def get_messages(chat_id: str, limit: int = 50, offset: int = 0, since: Op
         limit: Максимальное количество сообщений
         offset: Смещение для пагинации
         since: Опциональное время - вернуть только сообщения после этого времени
+        author_id: фильтр по id автора
+        author_nick: фильтр по никнейму
+        contains: подстрока для поиска в тексте сообщения
     """
     async with async_session() as session:
         statement = select(Message).where(Message.chat_id == chat_id)
@@ -95,6 +86,17 @@ async def get_messages(chat_id: str, limit: int = 50, offset: int = 0, since: Op
         # Добавить фильтр по времени, если указан
         if since:
             statement = statement.where(Message.created_at >= since)
+        
+        if author_id:
+            statement = statement.where(Message.author_id == author_id)
+
+        if author_nick:
+            statement = statement.where(Message.author_nick == author_nick)
+
+        if contains:
+            # SQLite LIKE is case-insensitive by default for ASCII; acceptable for MVP
+            like_pattern = f"%{contains}%"
+            statement = statement.where(Message.content.like(like_pattern))
         
         statement = statement.order_by(Message.created_at.desc()).offset(offset).limit(limit)
         result = await session.execute(statement)

@@ -7,7 +7,7 @@ ui:
 	streamlit run ai_core/ui/main.py
 
 bot:
-	python telegram_bot/main.py
+	python -m telegram_bot.main
 
 install:
 	pip install -r requirements.txt

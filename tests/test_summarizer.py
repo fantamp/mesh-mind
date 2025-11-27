@@ -14,8 +14,7 @@ def mock_run_agent_sync():
 def test_summarize_chat_success(mock_run_agent_sync):
     mock_run_agent_sync.return_value = "Summary text"
     
-    messages = [MagicMock(author_name="User", content="Hello", timestamp=MagicMock(strftime=lambda x: "2023-01-01"))]
-    result = summarize_chat(chat_id="123", messages=messages, instruction="Make it short")
+    result = summarize_chat(chat_id="123", instruction="Make it short")
     
     assert result == "Summary text"
     
@@ -23,20 +22,19 @@ def test_summarize_chat_success(mock_run_agent_sync):
     call_args = mock_run_agent_sync.call_args
     assert "chat_id='123'" in call_args.kwargs['user_message']
     assert "Make it short" in call_args.kwargs['user_message']
-    assert "User: Hello" in call_args.kwargs['user_message']
+    # We no longer pass messages in the prompt, so we don't check for "User: Hello"
 
 @patch("ai_core.services.agent_service.run_agent_sync")
-def test_run_summarizer_with_messages(mock_run_agent_sync):
-    """Test run_summarizer with messages."""
+def test_run_summarizer_instruction(mock_run_agent_sync):
+    """Test run_summarizer with instruction."""
     from ai_core.services.agent_service import run_summarizer
     chat_id = "test_chat_limit"
-    messages = [MagicMock(author_name="User", content="Hello", timestamp=MagicMock(strftime=lambda x: "2023-01-01"))]
     
-    run_summarizer(chat_id=chat_id, messages=messages)
+    run_summarizer(chat_id=chat_id, instruction="since yesterday")
     
-    # Verify agent was called with messages in prompt
+    # Verify agent was called
     mock_run_agent_sync.assert_called_once()
     call_kwargs = mock_run_agent_sync.call_args.kwargs
     user_message = call_kwargs["user_message"]
     
-    assert "User: Hello" in user_message
+    assert "since yesterday" in user_message

@@ -86,7 +86,7 @@ graph TD
 #### a) API Server (FastAPI)
 Универсальные endpoints:
 - `/ingest` — прием и сохранение данных
-- `/chat/message` — обработка сообщений через агентов
+- `/chat/message` — шлюз: сначала сохраняет через `/ingest`, затем вызывает оркестратор; если реакции нет — `{"reply": null}`
 - `/summary` — создание саммари
 - `/ask` — вопросы к БЗ
 - `/transcribe` — транскрипция голосовых (uk, ru, en)
@@ -129,7 +129,7 @@ graph TD
 
 ### SQLite (`data/db/chat_messages.db`)
 - Сырые сообщения из телеграм
-- Метаданные (chat_id, user_id, timestamp)
+- Метаданные (chat_id, author_id, author_nick, author_name, timestamp, media_path/type)
 - История чата
 
 ### ChromaDB (`data/vector_store/`)
