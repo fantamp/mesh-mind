@@ -4,18 +4,15 @@
 
 Интеллектуальный ассистент для автоматической обработки и поиска информации из:
 - Telegram чатов (текст + голосовые сообщения)
-- Email писем (.eml файлы)
-- Документов (PDF, DOCX, TXT)
 
 ---
 
 ## Архитектура
 
-Система состоит из трех основных компонентов, работающих на macOS локально (без Docker):
+Система состоит из двух основных компонентов, работающих на macOS локально (без Docker):
 
-1. **Telegram Bot** — отдельное приложение для работы с Telegram API
-2. **AI Core** — центральный сервис с агентами, API и UI
-3. **CLI Tools** — инструменты для массовой загрузки данных
+1. **Telegram Bot** — приложение для работы с Telegram API и AI Core
+2. **AI Core** — библиотека с агентами и бизнес-логикой
 
 ### Схема Взаимодействия
 
@@ -30,29 +27,18 @@ graph TD
         TGBot["Telegram Bot"]
         
         subgraph "AI Core (Python)"
-            API[API Server]
-            UI[Admin UI]
             AiCore[AI Agents]
-            VDB[(Vector DB)]
         end
         
-        CLI[CLI]
         DB[(SQLite)]
         FS[File System]
     end
 
     TG -->|Polling| TGBot
-    User -->|Load emails/docs| CLI
-    User -->|Edit/View| UI
     
-    TGBot -->|Store Messages| API
-    TGBot -->|Summarize| API
+    TGBot -->|Direct Import| AiCore
+    TGBot -->|Read/Write| DB
     
-    CLI -->|Direct Ingest| API
-    UI -->|Manage| API
-    
-    API --> AiCore
-    AiCore <--> VDB
     AiCore -->|Store Media| FS
     AiCore -->|Read Context, Store Data| DB
 ```
@@ -69,59 +55,27 @@ graph TD
 
 **Функции**:
 - Получает все сообщения из чатов
-- Обрабатывает команды (`/ask`, `/summary`, `/help`)
-- Передает сообщения в AI Core через API
+- Обрабатывает команды (`/start`, `/help`)
+- Напрямую вызывает функции AI Core
 - Отправляет ответы пользователям
 
-**Запуск**: `python telegram_bot/bot.py`
+**Запуск**: `python telegram_bot/main.py`
 
 ---
 
 ### 2. AI Core
 
-**Стек**: Python 3.10+, Google ADK, FastAPI, Streamlit, ChromaDB
+**Стек**: Python 3.10+, Google ADK
 
 **Подкомпоненты**:
 
-#### a) API Server (FastAPI)
-Универсальные endpoints:
-- `/ingest` — прием и сохранение данных
-- `/chat/message` — шлюз: сначала сохраняет через `/ingest`, затем вызывает оркестратор; если реакции нет — `{"reply": null}`
-- `/summary` — создание саммари
-- `/ask` — вопросы к БЗ
-- `/transcribe` — транскрипция голосовых (uk, ru, en)
-
-**Запуск**: `make run-api`
-
-#### b) Admin UI (Streamlit)
-Интерфейс для управления БЗ:
-- Просмотр содержимого Vector DB
-- Поиск по базе знаний
-- Редактирование/удаление записей
-- Ручная загрузка документов
-- Тегирование документов
-
-**Запуск**: `make run-ui`
-
-#### c) AI Agents (Google ADK)
+#### AI Agents (Google ADK)
 Мультиагентная система:
 - **Orchestrator** — центральный координатор
 - **Chat Summarizer** — суммаризация чата
-- **QA Agent** — ответы на вопросы
-- **Chat Observer** — поиск сообщений
+- **Chat Observer** — поиск сообщений и ответы на вопросы
 
 Детали см. [multi-agent-design.md](./multi-agent-design.md)
-
----
-
-### 3. CLI Tools
-
-**Функции**:
-- Массовая загрузка email (.eml файлов)
-- Массовая загрузка документов
-- Административные задачи
-
-**Запуск**: `python cli/main.py ingest --path ./data/emails`
 
 ---
 
@@ -132,11 +86,6 @@ graph TD
 - Метаданные (chat_id, author_id, author_nick, author_name, timestamp, media_path/type)
 - История чата
 
-### ChromaDB (`data/vector_store/`)
-- Векторные представления для semantic search
-- Метаданные: `chat_id`, `timestamp`, `author`
-- Изоляция по `chat_id`
-
 ### File System (`data/`)
 ```
 data/
@@ -145,7 +94,6 @@ data/
 │   ├── images/     # Изображения
 │   └── docs/       # Документы
 ├── db/             # SQLite файлы
-└── vector_store/   # ChromaDB
 ```
 
 ---
@@ -157,10 +105,7 @@ data/
 
 **Основные Библиотеки**:
 - Google ADK — для создания агентов
-- FastAPI — API server
-- Streamlit — UI
 - python-telegram-bot v20+ — Telegram integration
-- ChromaDB — векторная БД
 - SQLite — реляционная БД
 
 **Модели**:
@@ -178,24 +123,13 @@ data/
    make bot
    ```
 
-2. **AI Core API**:
-   ```bash
-   make run-api
-   ```
-
-3. **Admin UI** (опционально):
-   ```bash
-   make run-ui
-   ```
-
 ### Использование Makefile
 
 ```bash
 make help          # Список всех команд
 make install       # Установка зависимостей
 make test          # Запуск тестов
-make run-bot       # Запуск Telegram бота
-make run-api       # Запуск API сервера
+make bot           # Запуск Telegram бота
 ```
 
 ---

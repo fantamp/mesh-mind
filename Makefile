@@ -1,10 +1,5 @@
 .PHONY: api bot install test ui adk-web eval
 
-api:
-	uvicorn ai_core.api.main:app --reload
-
-ui:
-	streamlit run ai_core/ui/main.py
 
 bot:
 	python -m telegram_bot.main

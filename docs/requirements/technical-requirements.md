@@ -9,6 +9,10 @@
 ### Перед началом работы изучите:
 
 **1. Google Agent Development Kit (ADK)**
+> [!IMPORTANT]
+> **CRITICAL**: Before writing any code using ADK, you MUST read the [Official Documentation](https://google.github.io/adk-docs/).
+> Common mistake: Trying to call `agent.run()` directly. You MUST use `Runner` or helper functions like `run_agent_sync`.
+
 - [Официальная документация](https://google.github.io/adk-docs/)
 - [Multi-Agent Systems](https://google.github.io/adk-docs/agents/multi-agents/)
 - [Custom Function Tools](https://google.github.io/adk-docs/tools-custom/function-tools/)
@@ -19,7 +23,7 @@
 **2. Документация проекта**
 - [Продуктовые Требования](./multi-agent-system.md) — логика агентов
 - [Архитектура Агентов](../architecture/multi-agent-design.md) — схемы взаимодействия
-- [Правила Разработки](../../agent_template/rules/) — code style, testing
+- [Правила Разработки](../../.agent/rules/) — code style, testing
 
 ---
 
@@ -36,7 +40,7 @@
 
 **Преимущества**:
 - LLM-driven delegation (не нужна явная логика роутинга)
-- Идеально для Coordinator/Dispatcher pattern Специализированные агенты ведут сложные диалоги
+- Идеально для Coordinator/Dispatcher pattern
 
 **Референс**: [Coordinator Pattern](https://google.github.io/adk-docs/agents/multi-agents/#coordinatordispatcher-pattern)
 
@@ -67,11 +71,9 @@ ai_core/agents/
 ├── chat_summarizer/
 │   └── agent.py            # Суммаризация чата
 ├── summarizer/
-│   └── agent.py            # Простой суммаризатор
-├── qa/
-│   └── agent.py            # QA Agent
+│   └── agent.py            # Простой суммаризатор (Tool)
 └── chat_observer/
-    └── agent.py            # Наблюдатель
+    └── agent.py            # Наблюдатель (Search + QA)
 ```
 
 **Каждый agent.py содержит**:
@@ -90,9 +92,9 @@ ai_core/agents/
 
 **Ключевые моменты**:
 - **Model**: `gemini-2.5-flash`
-- **Sub-Agents**: Chat Summarizer, QA Agent, Chat Observer
+- **Sub-Agents**: Chat Summarizer, Chat Observer
 - **Session**: `chat_id` = `session_id`
-- **Natural Language**: понимает запросы как без команд, так и скомандами /ask или /summary
+- **Natural Language**: понимает запросы как без команд, так и с командами /ask или /summary
 - **Instruction**: описывает логику роутинга
 
 **Референс**: [Coordinator Pattern](https://google.github.io/adk-docs/agents/multi-agents/#coordinatordispatcher-pattern)
@@ -102,7 +104,16 @@ ai_core/agents/
 **Ключевые моменты**:
 - Использует `fetch_messages` tool (получение из SQLite)
 - Использует Simple Summarizer как `AgentTool`
-- Возвращает саммари в Telegram (НЕ сохраняет в VectorDB)
+- Возвращает саммари в Telegram
+
+### Обработка пересланных сообщений (Forwarded Messages)
+
+**Логика**:
+- Если сообщение переслано (is_forwarded = True):
+    - **Только сохраняется** в базу данных.
+    - **НЕ отправляется** в Оркестратор.
+    - Бот молчит (или отвечает "Saved" если не silent mode).
+- В Оркестратор попадают только прямые сообщения от пользователя.
 
 ### Простой Суммаризатор
 
@@ -111,21 +122,12 @@ ai_core/agents/
 - Используется Chat Summarizer через `AgentTool`
 - Нет собственных tools (только LLM)
 
-### Агент-Отвечатель (QA Agent)
-
-**Ключевые моменты**:
-- Использует `search_knowledge_base` tool (поиск в VectorDB)
-- Фильтрует по `chat_id` в метаданных
-- **Честно отвечает "я не знаю"** при отсутствии информации
-- Указывает источники
-
-**Критически важно**: Instruction должна явно требовать "скажи 'я не знаю'" если нет ответа.
-
 ### Агент-Наблюдатель (Chat Observer)
 
 **Ключевые моменты**:
 - Использует `fetch_messages` tool
 - Поиск по автору, дате, ключевым словам
+- Отвечает на вопросы по истории чата (QA)
 - Фильтрует по `chat_id`
 
 ---
@@ -168,24 +170,6 @@ session_service = InMemorySessionService()
 
 **Референс**: Смотри `ai_core/tools/messages.py`
 
-**Метаданные при ingest**:
-- В VectorDB и SQLite сохранять `author_id`, `author_nick`, `author_name` если доступны; допускаются null. Формат вывода выбирает доступные поля (ник > id > пусто).
-
-### 2. search_knowledge_base
-
-**Назначение**: Поиск в векторной БД (ChromaDB)
-
-**Параметры**:
-- `query: str` — поисковый запрос
-- `chat_id: str` — ID чата (для фильтрации)
-- `top_k: int` — количество результатов (по умолчанию 5)
-
-**Возвращает**: `List[Dict]` с полями `content`, `metadata`, `score`
-
-**Критически важно**: ВСЕГДА фильтровать по `chat_id` в метаданных!
-
-**Референс**: Смотри `ai_core/rag/knowledge_base.py`
-
 ---
 
 ## Тестирование Агентов
@@ -212,9 +196,6 @@ make adk-web
 tests/agents/eval/
 ├── orchestrator/
 │   └── routing_eval.yaml
-├── qa/
-│   ├── known_answers_eval.yaml
-│   └── unknown_answers_eval.yaml
 └── summarizer/
     └── quality_eval.yaml
 ```
@@ -276,14 +257,10 @@ pytest tests/ -v
 **Документация**:
 - [Продуктовые Требования](./multi-agent-system.md)
 - [Архитектура Агентов](../architecture/multi-agent-design.md)
-- [Правила Тестирования](../../agent_template/rules/04-testing.md)
+- [Правила Тестирования](../../.agent/rules/05-testing.md)
 
 **Google ADK**:
 - [ADK Documentation](https://google.github.io/adk-docs/)
 - [Multi-Agent Systems](https://google.github.io/adk-docs/agents/multi-agents/)
 - [Evaluation](https://google.github.io/adk-docs/evaluation/)
 - [Examples on GitHub](https://github.com/google/adk-python/tree/main/examples)
-
-## Временное допущение (MVP)
-
-Для сокращения сроков MVP допускается использовать прямые вызовы `google.generativeai` в слоях векторизации и транскрипции (см. `ai_core/rag/vector_db.py`, `ai_core/common/transcription.py`). Это исключение временное: после стабилизации потока через оркестратор необходимо заменить на ADK‑совместимый слой эмбеддингов и мультимодальных вызовов.

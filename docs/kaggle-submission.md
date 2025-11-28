@@ -12,8 +12,8 @@
 
 **Обязательные для демонстрации:**
 
-1. **✅Multi-agent system**
-   - Orchestrator + Chat Summarizer + QA Agent + Chat Observer
+1. **✅ Multi-agent system**
+   - Orchestrator + Chat Summarizer + Chat Observer
    - Оркестрация через Sub-Agents pattern
 
 2. **✅ Sessions & Memory**
@@ -22,18 +22,16 @@
    - Агент помнит диалог
 
 3. **✅ Custom Tools**
-   - `search_knowledge_base` — поиск в VectorDB
    - `fetch_messages` — получение сообщений из SQLite
 
-4. **✅ LLM Reasoning + Retrieval (RAG)**
-   - Semantic search в ChromaDB
-   - QA Agent отвечает на основе БЗ
+4. **✅ LLM Reasoning**
+   - Chat Observer ищет сообщения и отвечает на вопросы
+   - Orchestrator понимает natural language
 
 **Дополнительные (опционально)**:
 
 5. **Evaluation** — `adk eval` тесты для агентов
 6. **Agent Hierarchy** — Simple Summarizer через AgentTool
-7. **Natural Language Processing** — понимание запросов без команд
 
 ---
 
@@ -56,8 +54,7 @@
 #### 3. Architecture
 - **Orchestrator** — центральный координатор (понимает natural language)
 - **Chat Summarizer** — создает саммари истории чата
-- **QA Agent** — отвечает на вопросы из БЗ (честно говорит "я не знаю")
-- **Chat Observer** — находит конкретные сообщения
+- **Chat Observer** — находит конкретные сообщения и отвечает на вопросы
 
 **Схема взаимодействия**: См. [multi-agent-design.md](./architecture/multi-agent-design.md)
 
@@ -65,20 +62,18 @@
 1. **Sub-Agents Pattern** — LLM-driven delegation
 2. **AgentTool Pattern** — инкапсуляция задач
 3. **InMemorySessionService** — контекст диалога
-4. **Custom Tools** — `search_knowledge_base`, `fetch_messages`
+4. **Custom Tools** — `fetch_messages`
 5. **Evaluation** — `adk eval` для тестирования
 
 #### 5. Results
-- ✅ MVP работает для Telegram + Email + Документов
+- ✅ MVP работает для Telegram
 - ✅ Изоляция по чатам (каждый чат видит только свои данные)
-- ✅ QA Agent: 80%+ точность ответов
-- ✅ Честность: говорит "я не знаю" в 10-15% случаев
+- ✅ Chat Observer: высокая точность поиска
 
 #### 6. Future Work
 - Кастомная суммаризация по инструкциям
 - Confidence score для ответов
-- UI для редактирования БЗ
-- Тегирование документов
+- Подключение других источников данных
 
 ---
 
@@ -100,7 +95,7 @@
 4. **Demo Video** (макс. 5 минут)
    - Показать работу Orchestrator'а
    - Суммаризация чата
-   - QA Agent отвечает на вопросы
+   - Chat Observer отвечает на вопросы
    - Демонстрация изоляции по чатам
 
 5. **Eval Tests**
@@ -156,8 +151,7 @@
 ### Функциональность
 - [ ] Orchestrator понимает natural language
 - [ ] Chat Summarizer создает структурированные саммари
-- [ ] QA Agent отвечает на основе БЗ
-- [ ] QA Agent честно говорит "я не знаю"
+- [ ] Chat Observer находит сообщения и отвечает на вопросы
 - [ ] Изоляция по чатам работает
 
 ### Тестирование
@@ -180,7 +174,7 @@
 ### Технические Концепции ADK
 - [ ] Multi-agent system (3+ агента)
 - [ ] Sessions & Memory (InMemorySessionService)
-- [ ] Custom Tools (минимум 2 tool'а)
+- [ ] Custom Tools (минимум 1 tool)
 - [ ] Evaluation (`adk eval` тесты)
 
 ---

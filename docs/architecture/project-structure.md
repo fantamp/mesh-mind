@@ -14,9 +14,7 @@
 ├── Makefile                    # Команды для запуска
 ├── .env                        # Конфигурация (в .gitignore)
 │
-
-
-├── agent_template/             # Правила и workflows (переименовать в .agent/)
+├── .agent/                     # Правила и workflows
 │   ├── rules/                  # Правила для агентов
 │   └── workflows/              # Автоматизированные процессы
 │
@@ -28,17 +26,13 @@
 ├── specs/                      # Атомарные спецификации (Specs)
 │
 ├── ai_core/                    # Основной сервис (The Core)
-│   ├── api/                    # API (FastAPI)
-│   ├── ui/                     # Admin UI (Streamlit)
 │   ├── agents/                 # AI-агенты (Google ADK)
-│   ├── rag/                    # База знаний и векторы
 │   ├── storage/                # Работа с БД
 │   ├── ingest/                 # Загрузка данных
+│   ├── tools/                  # Инструменты агентов
 │   └── common/                 # Общие утилиты
 │
 ├── telegram_bot/               # Telegram бот (отдельное приложение)
-│
-├── cli/                        # CLI-инструменты
 │
 ├── tests/                      # Тесты
 │   ├── agents/                 # Тесты агентов
@@ -48,7 +42,6 @@
 │
 └── data/                       # Локальное хранилище (в .gitignore)
     ├── db/                     # SQLite файлы
-    ├── vector_store/           # ChromaDB
     └── media/                  # Медиа файлы
 ```
 
@@ -59,26 +52,15 @@
 ### Корневые Файлы
 
 - **`AGENTS.md`** — навигатор по правилам для AI-агентов
-- **`README.md`** — общее описание проекта (пока пустой)
+- **`README.md`** — общее описание проекта
 - **`requirements.txt`** — Python зависимости
 - **`Makefile`** — команды для запуска сервисов
 - **`.env`** — конфигурация (API ключи, токены)
 
-### `agent_template/` (переименовать в `.agent/`)
+### `.agent/`
 
 - **`rules/`** — правила разработки для агентов
-  - `01-project-overview.md` — обзор проекта
-  - `02-architecture.md` — архитектурные принципы
-  - `03-code-style.md` — стиль кода
-  - `04-testing.md` — требования к тестам
-  - `05-safety.md` — безопасность и git
-
 - **`workflows/`** — автоматизированные процессы
-  - `pr-check.md` — проверка перед коммитом
-  - `check-rules.md` — проверка правил
-  - `check-docs.md` — проверка документации
-  - `test-agent.md` — тестирование агентов
-  - `implement-from-spec.md` — реализация по спецификации
 
 ### `docs/`
 
@@ -94,32 +76,15 @@
   - `multi-agent-design.md` — дизайн агентов
   - `project-structure.md` — этот файл
 
-- **`antigravity-rules-reglament.md`** — регламент по организации документации
-
 ### `ai_core/`
 
-**Сердце приложения** — вся бизнес-логика, API и UI:
-
-- **`api/`** — FastAPI эндпоинты
-  - `/ingest` — загрузка данных
-  - `/chat/message` — шлюз: сохраняет через `/ingest`, затем вызывает оркестратор
-  - `/summary`, `/ask` — команды
-
-- **`ui/`** — Streamlit интерфейс
-  - Просмотр БЗ
-  - Редактирование документов
-  - Поиск
+**Сердце приложения** — вся бизнес-логика:
 
 - **`agents/`** — AI-агенты (Google ADK)
   - `orchestrator/` — главный координатор
   - `chat_summarizer/` — суммаризация
-  - `qa/` — вопросы-ответы
-  - `chat_observer/` — поиск сообщений
+  - `chat_observer/` — поиск сообщений и ответы на вопросы
   - `summarizer/` — простой суммаризатор
-
-- **`rag/`** — работа с базой знаний
-  - ChromaDB интеграция
-  - Векторный поиск
 
 - **`storage/`** — работа с БД
   - SQLite интеграция
@@ -128,6 +93,9 @@
 - **`ingest/`** — загрузка данных
   - Парсеры (email, документы, голосовые)
   - Транскрипция
+
+- **`tools/`** — инструменты агентов
+  - `messages.py` — работа с сообщениями
 
 - **`common/`** — общие утилиты
   - Конфигурация
@@ -141,17 +109,9 @@
 - Обработка команд
 - Передача сообщений в AI Core
 
-### `cli/`
-
-**CLI-инструменты** для административных задач:
-- Массовая загрузка email
-- Массовая загрузка документов
-- Утилиты для разработчиков
-
 ### `tests/`
 
 **Тесты**:
-
 - **`agents/eval/`** — ADK eval тесты для агентов
 - **`integration/`** — интеграционные тесты
 - **`unit/`** — unit тесты
@@ -162,9 +122,6 @@
 
 - **`db/`** — SQLite файлы
   - `chat_messages.db` — сообщения из Telegram
-
-- **`vector_store/`** — ChromaDB
-  - Векторные представления
 
 - **`media/`** — медиа файлы
   - `voice/` — голосовые сообщения
@@ -179,8 +136,8 @@
 
 - **Каталоги**: lowercase с подчеркиваниями (`ai_core`, `telegram_bot`)
 - **Python модули**: lowercase с подчеркиваниями
-- **Классы**: PascalCase (`QaAgent`, `ChatSummarizer`)
-- **Функции**: snake_case (`fetch_messages`, `search_knowledge_base`)
+- **Классы**: PascalCase (`ChatSummarizer`)
+- **Функции**: snake_case (`fetch_messages`)
 
 ### Импорты
 
@@ -188,7 +145,6 @@
 - Абсолютные импорты между пакетами:
   ```python
   from ai_core.storage.db import get_messages
-  from ai_core.rag.knowledge_base import search
   ```
 
 ### Организация Кода
@@ -203,4 +159,4 @@
 
 - [Обзор Системы](./system-overview.md)
 - [Дизайн Агентов](./multi-agent-design.md)
-- [Правила Разработки](../../agent_template/rules/)
+- [Правила Разработки](../../.agent/rules/)

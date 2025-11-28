@@ -24,9 +24,10 @@ def extract_author_from_message(message) -> Tuple[Optional[str], Optional[str], 
     Возвращает (author_id, author_nick, author_name) исходного автора.
     Для форвардов берём оригинального автора, иначе текущего.
     """
-    # Newer Telegram API: forward_origin (may contain sender_user or sender_chat)
+    # Newer Telegram API: forward_origin (may contain sender_user, sender_chat, sender_user_name, chat)
     forward_origin = getattr(message, "forward_origin", None)
     if forward_origin:
+        # 1. MessageOriginUser
         origin_user = getattr(forward_origin, "sender_user", None)
         if origin_user:
             author_id = str(origin_user.id) if getattr(origin_user, "id", None) else None
@@ -35,6 +36,8 @@ def extract_author_from_message(message) -> Tuple[Optional[str], Optional[str], 
             lname = origin_user.last_name or ""
             author_name = f"{fname} {lname}".strip() or None
             return author_id, author_nick, author_name
+            
+        # 2. MessageOriginChat (Groups)
         origin_chat = getattr(forward_origin, "sender_chat", None)
         if origin_chat:
             return (
@@ -42,6 +45,22 @@ def extract_author_from_message(message) -> Tuple[Optional[str], Optional[str], 
                 origin_chat.username,
                 origin_chat.title
             )
+            
+        # 3. MessageOriginChannel (Channels) - uses 'chat' attribute
+        origin_channel_chat = getattr(forward_origin, "chat", None)
+        if origin_channel_chat:
+             return (
+                str(origin_channel_chat.id) if getattr(origin_channel_chat, "id", None) else None,
+                origin_channel_chat.username,
+                origin_channel_chat.title
+            )
+
+        # 4. MessageOriginHiddenUser - uses 'sender_user_name'
+        origin_hidden_name = getattr(forward_origin, "sender_user_name", None)
+        if origin_hidden_name:
+            return None, None, origin_hidden_name
+            
+        # Fallback for older sender_name if still used or other types
         origin_name = getattr(forward_origin, "sender_name", None)
         if origin_name:
             return None, None, origin_name
@@ -78,36 +97,4 @@ def extract_author_from_message(message) -> Tuple[Optional[str], Optional[str], 
 
     return None, None, None
 
-def parse_summary_params(args: list) -> Dict[str, Any]:
-    """
-    Парсит параметры команды /summary.
-    
-    Args:
-        args: Список аргументов команды
-        
-    Returns:
-        Словарь с параметрами: {"mode": "auto|count|time", "value": ...}
-    """
-    if not args:
-        # Дефолтное поведение - автоопределение разговора
-        return {"mode": "auto"}
-    
-    param = args[0].strip()
-    
-    # Проверка на число (количество сообщений)
-    if param.isdigit():
-        return {"mode": "count", "value": int(param)}
-    
-    # Проверка на формат времени (2h, 30m)
-    if len(param) > 1:
-        number_part = param[:-1]
-        unit = param[-1].lower()
-        
-        if number_part.isdigit():
-            if unit == 'h':
-                return {"mode": "time", "hours": int(number_part)}
-            elif unit == 'm':
-                return {"mode": "time", "minutes": int(number_part)}
-    
-    # Если не удалось распарсить, используем auto режим
-    return {"mode": "auto"}
+
