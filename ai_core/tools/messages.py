@@ -58,4 +58,4 @@ def fetch_messages(
     for msg in messages_sorted:
         formatted_messages.append(format_message_to_string(msg))
 
-    return "\n".join(formatted_messages)
+    return "\n\n\n".join(formatted_messages)

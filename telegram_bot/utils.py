@@ -1,5 +1,10 @@
 import os
 from typing import Tuple, Optional, Dict, Any
+import logging
+from telegram import Update
+from telegram.error import BadRequest
+
+logger = logging.getLogger(__name__)
 
 # Configuration
 TELEGRAM_ALLOWED_CHAT_IDS = os.getenv("TELEGRAM_ALLOWED_CHAT_IDS", "")
@@ -98,3 +103,23 @@ def extract_author_from_message(message) -> Tuple[Optional[str], Optional[str], 
     return None, None, None
 
 
+
+async def send_safe_message(update: Update, text: str, parse_mode: str = "Markdown") -> None:
+    """
+    Safely send a message, truncating it if too long and falling back to plain text on error.
+    """
+    MAX_LENGTH = 4000
+    
+    if len(text) > MAX_LENGTH:
+        text = text[:MAX_LENGTH] + "\n\n(Response truncated due to length limit)"
+        
+    try:
+        await update.message.reply_text(text, parse_mode=parse_mode)
+    except BadRequest as e:
+        logger.warning(f"Failed to send message with parse_mode={parse_mode}: {e}. Falling back to plain text.")
+        try:
+            # Fallback: try sending without parse_mode (plain text)
+            await update.message.reply_text(text)
+        except Exception as e2:
+            logger.error(f"Failed to send message even as plain text: {e2}")
+            await update.message.reply_text("Error: Could not send response.")

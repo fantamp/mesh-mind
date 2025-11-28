@@ -9,8 +9,10 @@ from datetime import datetime, timezone
 from telegram_bot.utils import (
     is_chat_allowed, 
     extract_author_from_message, 
-    is_forwarded
+    is_forwarded,
+    send_safe_message
 )
+
 from ai_core.common.config import settings
 from ai_core.storage.db import save_message
 from ai_core.common.models import Message
@@ -83,8 +85,8 @@ async def extract_text_from_message(update: Update, context: ContextTypes.DEFAUL
     Raises:
         Exception: If the message type is unknown or transcription fails for a voice message.
     """
-    voice = update.message.voice
     if update.message.voice:
+        voice = update.message.voice
         file_id = voice.file_id
         new_file = await context.bot.get_file(file_id)
         
@@ -145,10 +147,11 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
             reply.append(f"*Transcription: {text[:80]}...*" if len(text) > 80 else f"*Transcription: {text}*")
 
         if not is_forwarded(update.message):
+            contexted_text = f"Context: chat_id={chat.id}\nUser message in the group Telegram chat:\n\n{text}"
             agent_response = await asyncio.to_thread(
                 run_agent_sync,
                 agent=orchestrator,
-                user_message=text,
+                user_message=contexted_text,
                 user_id=str(user.id),
                 session_id=str(chat.id)
             )
@@ -157,13 +160,13 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
         logger.error(f"Got an error: {e}")
         reply.append(f"Got an error during processing: {e}")
     finally:        
-        if agent_response:
-            reply.append(agent_response)
-        elif is_message_saved and not settings.BOT_SILENT_MODE:
+        if not agent_response and is_message_saved and not settings.BOT_SILENT_MODE:
             reply.append("Message saved.")
 
         if reply:
             await update.message.reply_text("\n".join([f"- {r}" for r in reply]), parse_mode="Markdown")
+        if agent_response:
+            await send_safe_message(update, agent_response)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
