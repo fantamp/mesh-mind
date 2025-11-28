@@ -5,7 +5,7 @@ from ai_core.storage.db import get_messages
 
 def fetch_messages(
     chat_id: str,
-    limit: int = 50,
+    limit: int = 10,
     since: Optional[str] = None,
     author_id: Optional[str] = None,
     author_nick: Optional[str] = None,
