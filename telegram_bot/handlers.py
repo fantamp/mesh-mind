@@ -69,128 +69,102 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     
     await update.message.reply_text(help_text, parse_mode="Markdown")
 
-async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle incoming text messages."""
-    if not is_chat_allowed(update.effective_chat.id):
-        return
 
-    text = update.message.text
-    user = update.effective_user
-    chat = update.effective_chat
+async def extract_text_from_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> (str, str):
+    """Extracts text content and its media type from an incoming message.
 
-    # Regular flow via orchestrator
-    try:
-        # 1. Save message
-        msg = Message(
-            source="telegram",
-            chat_id=str(chat.id),
-            author_id=str(user.id),
-            author_name=user.full_name,
-            author_nick=user.username,
-            content=text,
-            created_at=datetime.fromtimestamp(update.message.date.timestamp(), tz=timezone.utc)
-        )
-        await save_message(msg)
+    Args:
+        update (Update): The Telegram Update object containing the message.
+        context (ContextTypes.DEFAULT_TYPE): The context object containing the bot instance.
 
-        # Check if forwarded
-        if is_forwarded(update.message):
-            if not settings.BOT_SILENT_MODE:
-                await update.message.reply_text("Saved (forwarded message).")
-            return
+    Returns:
+        tuple[str, str]: A tuple containing the extracted text and its media type ("text" or "voice").
 
-        # 2. Call Orchestrator
-        # Use run_agent_sync to handle ADK runner complexity
-        # Inject context
-        context_text = f"Context: chat_id={chat.id}\nQuestion: {text}"
+    Raises:
+        Exception: If the message type is unknown or transcription fails for a voice message.
+    """
+    voice = update.message.voice
+    if update.message.voice:
+        file_id = voice.file_id
+        new_file = await context.bot.get_file(file_id)
         
-        reply_text = await asyncio.to_thread(
-            run_agent_sync,
-            agent=orchestrator,
-            user_message=context_text,
-            user_id=str(user.id),
-            session_id=str(chat.id)
-        )
+        # Create a temporary directory if it doesn't exist
+        temp_dir = Path("tmp")
+        temp_dir.mkdir(exist_ok=True)
+        file_path = temp_dir / f"{file_id}.ogg" # FIXME: dangerously using file_id as filename
         
-        if reply_text:
-            await update.message.reply_text(reply_text)
-        elif not settings.BOT_SILENT_MODE:
-            # Only send confirmation if not in silent mode and no reply from orchestrator
-            await update.message.reply_text(f"Saved: {text[:20]}..." if len(text) > 20 else f"Saved: {text}")
-            
-    except Exception as e:
-        logger.error(f"Error sending to orchestrator: {e}")
-        if not settings.BOT_SILENT_MODE:
-            await update.message.reply_text("Saved (error sending to orchestrator).")
+        try:
+            await new_file.download_to_drive(file_path)
+        
+            transcription_service = TranscriptionService()
+            transcription = await transcription_service.transcribe(str(file_path))
 
-async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+            if not transcription:
+                raise Exception("empty transcription returned from the transcription service")
+        finally:
+            if file_path.exists():
+                file_path.unlink()
+
+        return transcription, "voice"
+    elif update.message.text:
+        return update.message.text, "text"
+    raise Exception("unknown message type")
+
+
+async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming voice messages."""
     if not is_chat_allowed(update.effective_chat.id):
+        logger.info(f"Message from disallowed chat: {update.effective_chat.id}")
         return
-
-    voice = update.message.voice
-    file_id = voice.file_id
-    new_file = await context.bot.get_file(file_id)
     
-    # Create a temporary directory if it doesn't exist
-    temp_dir = Path("temp_voice")
-    temp_dir.mkdir(exist_ok=True)
-    
-    file_path = temp_dir / f"{file_id}.ogg"
-    
-    await new_file.download_to_drive(file_path)
-    
+    text, media_type = await extract_text_from_message(update, context)
     user = update.effective_user
     chat = update.effective_chat
     author_id, author_nick, author_name = extract_author_from_message(update.message)
+
+    is_message_saved = False
+    agent_response = None
+    reply = []
     
     try:
-        # 1. Transcribe
-        transcription_service = TranscriptionService()
-        transcription = await transcription_service.transcribe(str(file_path))
-        
-        # 2. Save message
         msg = Message(
             source="telegram",
             chat_id=str(chat.id),
             author_id=author_id or str(user.id),
             author_name=author_name or user.full_name,
             author_nick=author_nick or user.username,
-            content=transcription or "[Voice Message]",
+            content=text,
             created_at=datetime.fromtimestamp(update.message.date.timestamp(), tz=timezone.utc),
-            media_type="voice",
-            media_path=str(file_path) # Note: file_path is local temp, ideally should be permanent storage
+            media_type=media_type,
+            media_path=""
         )
         await save_message(msg)
+        is_message_saved = True
 
-        # 3. Send transcription to orchestrator
-        if transcription:
-            try:
-                reply_text = await asyncio.to_thread(
-                    run_agent_sync,
-                    agent=orchestrator,
-                    user_message=transcription,
-                    user_id=str(user.id),
-                    session_id=str(chat.id)
-                )
-                
-                if reply_text:
-                    await update.message.reply_text(reply_text)
-                elif not settings.BOT_SILENT_MODE:
-                     await update.message.reply_text("Voice message saved.")
-            except Exception as e:
-                logger.error(f"Error sending voice transcription to orchestrator: {e}")
-                if not settings.BOT_SILENT_MODE:
-                    await update.message.reply_text("Voice message saved (orchestrator error).")
-        else:
-            if not settings.BOT_SILENT_MODE:
-                await update.message.reply_text("Voice message saved (no transcription).")
+        if media_type == "voice":
+            reply.append(f"*Transcription: {text[:80]}...*" if len(text) > 80 else f"*Transcription: {text}*")
+
+        if not is_forwarded(update.message):
+            agent_response = await asyncio.to_thread(
+                run_agent_sync,
+                agent=orchestrator,
+                user_message=text,
+                user_id=str(user.id),
+                session_id=str(chat.id)
+            )
+        
     except Exception as e:
-        logger.error(f"Error saving voice: {e}")
-        await update.message.reply_text("Failed to save voice message.")
-    finally:
-        # Clean up
-        if file_path.exists():
-            file_path.unlink()
+        logger.error(f"Got an error: {e}")
+        reply.append(f"Got an error during processing: {e}")
+    finally:        
+        if agent_response:
+            reply.append(agent_response)
+        elif is_message_saved and not settings.BOT_SILENT_MODE:
+            reply.append("Message saved.")
+
+        if reply:
+            await update.message.reply_text("\n".join([f"- {r}" for r in reply]), parse_mode="Markdown")
+
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""

@@ -19,3 +19,5 @@ data/*
 # временные файлы
 tmp/
 .adk
+
+temp_voice
