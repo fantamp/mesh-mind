@@ -13,10 +13,6 @@ class Settings(BaseSettings):
         return os.path.join(self.PROJECT_ROOT, "data/db/mesh_mind.db")
 
     @property
-    def CHROMA_PATH(self) -> str:
-        return os.path.join(self.PROJECT_ROOT, "data/vector_store")
-
-    @property
     def MEDIA_PATH(self) -> str:
         return os.path.join(self.PROJECT_ROOT, "data/media")
 

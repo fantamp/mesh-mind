@@ -1,5 +1,0 @@
-This is a plain text sample document.
-
-It contains multiple lines of text that will be used to test the ingestion service.
-
-The text should be properly parsed and chunked by the system.

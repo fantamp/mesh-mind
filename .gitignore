@@ -1,14 +1,15 @@
 .env
-venv
 
 # Python
+venv
+.venv
 __pycache__
 *.pyc
 .pytest_cache/
 
+# Данные
 data/*
 !data/.gitkeep
-!data/sample_docs/
 
 # MacOS files
 .DS_Store
@@ -18,6 +19,5 @@ data/*
 
 # временные файлы
 tmp/
-.adk
-
 temp_voice
+.adk
