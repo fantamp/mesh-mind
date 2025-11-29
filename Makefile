@@ -13,6 +13,11 @@ test:
 adk-web:
 	cd ai_core/agents && PYTHONPATH=$(shell pwd) adk web
 
+.PHONY: demo
+demo:
+	@echo "Running Multi-Agent Demo..."
+	python scripts/demo/demo_agents.py
+
 # Универсальный запуск eval: make eval AGENT=chat_observer
 # Для других агентов добавьте свою ветку ниже с seed/eval/summary
 eval:
