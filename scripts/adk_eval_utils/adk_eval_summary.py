@@ -20,18 +20,26 @@ import json
 import os
 import re
 import textwrap
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 FIELD_WIDTH = 26  # для выравнивания колонок
 
 
 def load_latest_results(history_dir: str, agent: str, eval_set: str) -> Tuple[str, List[Tuple[Dict[str, Any], float]]]:
+    # Pattern matching: agent_name + eval_set_id + timestamp + .evalset_result.json
+    # Note: ADK uses the agent name from config or command line, and eval_set_id from the JSON.
+    # We try a flexible pattern to catch files.
     pattern = os.path.join(
-        history_dir, f"{agent}_{eval_set}_*.evalset_result.json"
+        history_dir, f"*{eval_set}*.evalset_result.json"
     )
     files = sorted(glob.glob(pattern), key=os.path.getmtime)
     if not files:
-        raise FileNotFoundError(f"Не найдено файлов по шаблону {pattern}")
+        # Fallback: try to find ANY file with the eval_set id in it
+        pattern = os.path.join(history_dir, f"*{eval_set}*.json")
+        files = sorted(glob.glob(pattern), key=os.path.getmtime)
+        
+    if not files:
+        raise FileNotFoundError(f"Не найдено файлов по шаблону {pattern} в {history_dir}")
 
     latest_file = files[-1]
     latest_mtime = os.path.getmtime(latest_file)
@@ -45,11 +53,15 @@ def load_latest_results(history_dir: str, agent: str, eval_set: str) -> Tuple[st
     results: List[Tuple[Dict[str, Any], float]] = []
     for path in latest_files:
         mtime = os.path.getmtime(path)
-        content = open(path, "r", encoding="utf-8").read()
-        data = json.loads(content)
-        if isinstance(data, str):
-            data = json.loads(data)
-        results.append((data, mtime))
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+                data = json.loads(content)
+                if isinstance(data, str):
+                    data = json.loads(data)
+                results.append((data, mtime))
+        except Exception as e:
+            print(f"⚠️ Ошибка чтения {path}: {e}")
 
     return latest_file, results
 
@@ -132,15 +144,35 @@ def expected_summary(case: Dict[str, Any]) -> Tuple[List[str], str]:
     return calls, resp
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Короткий вывод ADK eval")
-    parser.add_argument("--agent", default="chat_observer")
-    parser.add_argument("--history-dir", required=True)
-    parser.add_argument("--eval-set", required=True)
-    parser.add_argument("--width", type=int, default=160, help="Макс. длина ответа")
-    args = parser.parse_args()
+def get_metrics(cases: List[Dict[str, Any]]) -> Dict[str, float]:
+    """Extracts aggregated metrics from cases."""
+    if not cases:
+        return {}
+    
+    # Usually metrics are in the first case or aggregated separately.
+    # Here we look at the first case's overall metrics as they often represent the set config/results
+    metrics = {}
+    for m in cases[0].get("overall_eval_metric_results", []) or []:
+        name = m.get("metric_name")
+        score = m.get("score")
+        if name and score is not None:
+            metrics[name] = float(score)
+            
+    # Calculate pass rate manually to be sure
+    passed = sum(1 for c in cases if c.get("final_eval_status") == 1)
+    total = len(cases)
+    metrics["pass_rate"] = passed / total if total > 0 else 0.0
+    
+    return metrics
 
-    path, datasets = load_latest_results(args.history_dir, args.agent, args.eval_set)
+
+def print_summary(agent: str, history_dir: str, eval_set: str, width: int = 160) -> Dict[str, Any]:
+    try:
+        path, datasets = load_latest_results(history_dir, agent, eval_set)
+    except FileNotFoundError as e:
+        print(f"❌ {e}")
+        return {"error": str(e)}
+
     print(f"Последний результат: {path}\n")
 
     # Дедублируем по eval_id, берём самый свежий кейс
@@ -155,8 +187,7 @@ def main() -> None:
     cases = [v[0] for v in cases_by_id.values()]
 
     passed = sum(1 for c in cases if c.get("final_eval_status") == 1)
-    failed = len(cases) - passed
-
+    
     for case in cases:
         status_ok = case.get("final_eval_status") == 1
         status_str = "это корректно" if status_ok else "это ошибка!"
@@ -166,7 +197,6 @@ def main() -> None:
         ).replace("\n", " ")
         response = safe_final_text(inv)
         calls = extract_calls(inv)
-        tscore = tool_score(case)
         exp_calls, exp_resp = expected_summary(case)
         tool_steps, event_steps = count_steps(inv)
 
@@ -177,14 +207,14 @@ def main() -> None:
         act_tools = "; ".join(_format_call(c) for c in calls) if calls else "(нет вызовов)"
 
         print(f"Кейс: {case.get('eval_id')}")
-        _p("вопрос:", user_text)
-        _p("ожид. ответ:", textwrap.shorten(exp_resp_clean, width=args.width))
-        _p("факт. ответ:", textwrap.shorten(response_clean, width=args.width))
+        _p("вопрос:", textwrap.shorten(user_text, width=width))
+        _p("ожид. ответ:", textwrap.shorten(exp_resp_clean, width=width))
+        _p("факт. ответ:", textwrap.shorten(response_clean, width=width))
         _p("ожид. инструменты:", exp_tools)
         _p("факт. инструменты:", act_tools)
-        metrics = case.get("overall_eval_metric_results", []) or []
+        metrics_list = case.get("overall_eval_metric_results", []) or []
         metrics_str = "; ".join(
-            f"{m.get('metric_name')}={m.get('score')} (thr={m.get('threshold')})" for m in metrics
+            f"{m.get('metric_name')}={m.get('score')} (thr={m.get('threshold')})" for m in metrics_list
         ) or "—"
 
         _p("статус:", status_str)
@@ -192,13 +222,36 @@ def main() -> None:
         _p("шаги:", f"tool_calls={tool_steps}, invocation_events={event_steps}")
         print("-" * 80)
 
-    # Итоговые метрики (берём из первого кейса, обычно одинаковые правила)
-    if cases:
-        metrics = cases[0].get("overall_eval_metric_results", []) or []
-        print("Итоговые метрики:")
-        for m in metrics:
-            print(f"- {m.get('metric_name')}: threshold={m.get('threshold')} score={m.get('score')}")
+    metrics = get_metrics(cases)
+    print("Итоговые метрики:")
+    for k, v in metrics.items():
+        print(f"- {k}: {v}")
+        
     print(f"Итог: {passed} / {len(cases)} кейсов прошли")
+    
+    return {
+        "passed": passed,
+        "total": len(cases),
+        "metrics": metrics,
+        "file": path
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Короткий вывод ADK eval")
+    parser.add_argument("--agent", default="chat_observer")
+    parser.add_argument("--history-dir", required=True)
+    parser.add_argument("--eval-set", required=True)
+    parser.add_argument("--width", type=int, default=160, help="Макс. длина ответа")
+    parser.add_argument("--json-summary", action="store_true", help="Вывести итоговый JSON в последней строке")
+    args = parser.parse_args()
+
+    summary = print_summary(args.agent, args.history_dir, args.eval_set, args.width)
+    
+    if args.json_summary:
+        print("JSON_SUMMARY_START")
+        print(json.dumps(summary))
+        print("JSON_SUMMARY_END")
 
 
 if __name__ == "__main__":

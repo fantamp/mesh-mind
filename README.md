@@ -19,6 +19,22 @@ Intelligent agentic system for Telegram chat analysis and automation.
 ✅ **Оценка Агентов (Eval)**: ADK eval framework с полным покрытием тестами
 ✅ **Наблюдаемость**: Структурированное логирование через loguru
 
+## Evaluation Results
+
+The project includes comprehensive ADK eval test cases for all agents:
+
+```bash
+# Run all evaluation tests
+make eval
+```
+
+**Coverage:**
+- ✅ **Orchestrator**: routing logic, silent mode
+- ✅ **Chat Summarizer**: fetch + summarization pipeline
+- ✅ **Chat Observer**: tool usage, filters
+
+See `tests/agents/eval/*/` for test cases.
+
 ## Architecture
 
 - **Language**: Python 3.10+

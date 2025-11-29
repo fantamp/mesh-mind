@@ -1,0 +1,92 @@
+{
+  "eval_set_id": "chat_summarizer_eval_v1",
+  "description": "Tests chat summarizer functionality. Ensures it correctly fetches messages and produces summaries.",
+  "eval_cases": [
+    {
+      "eval_id": "happy_small_limit",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "CONTEXT: chat_id='eval_main_chat' Суммаризируй последние 10 сообщений"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "eval_main_chat",
+                  "limit": 10
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "happy_medium_limit",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "CONTEXT: chat_id='eval_main_chat' Суммаризируй последние 50 сообщений"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "eval_main_chat",
+                  "limit": 50
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "edge_empty_chat",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "CONTEXT: chat_id='eval_empty_chat' Суммаризируй чат"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "fetch_messages",
+                "args": {
+                  "chat_id": "eval_empty_chat",
+                  "limit": 50
+                }
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "No messages found"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

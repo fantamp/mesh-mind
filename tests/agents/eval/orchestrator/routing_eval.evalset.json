@@ -1,0 +1,107 @@
+{
+  "eval_set_id": "orchestrator_routing_v1",
+  "description": "Tests orchestrator routing logic to sub-agents. Ensures correct delegation based on user intent.",
+  "eval_cases": [
+    {
+      "eval_id": "happy_routing_to_summarizer",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "CONTEXT: chat_id='eval_main_chat'\nSummarize the chat"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "transfer_to_agent",
+                "args": {
+                  "agent_name": "chat_summarizer"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "happy_routing_to_observer",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "CONTEXT: chat_id='eval_main_chat'\nFind messages about budget"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "transfer_to_agent",
+                "args": {
+                  "agent_name": "chat_observer"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "silent_mode_casual_message",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "CONTEXT: chat_id='eval_main_chat'\nJust chatting with friends, nothing serious."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": []
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": ""
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "edge_ambiguous_request",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "CONTEXT: chat_id='eval_main_chat'\nWhat happened yesterday?"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "transfer_to_agent",
+                "args": {
+                  "agent_name": "chat_observer"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

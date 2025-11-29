@@ -5,7 +5,6 @@
 
 Что делает:
 - очищает и наполняет SQLite сообщениями для разных chat_id
-- очищает и наполняет векторное хранилище (Chroma) документами для QA кейсов
 """
 
 import asyncio
@@ -14,18 +13,13 @@ from datetime import datetime, timedelta, timezone
 from sqlmodel import delete
 
 from ai_core.storage.db import Message, init_db, async_session
-from ai_core.rag.vector_db import VectorDB
 
 
 # Chat IDs, используемые в eval-наборах
 CHAT_IDS = [
-    "eval_chat_observer",   # chat_observer
-    "empty_chat_observer",  # пустой чат для observer
-    "eval_chat_summarizer", # chat_summarizer
-    "eval_orchestrator",    # orchestrator (history)
+    "eval_main_chat",       # основной чат с сообщениями
+    "eval_empty_chat",      # пустой чат для проверки edge cases
 ]
-
-QA_CHAT_ID = "eval_qa_chat"
 
 
 async def seed_sqlite() -> None:
@@ -33,67 +27,43 @@ async def seed_sqlite() -> None:
 
     async with async_session() as session:
         # Очистка
-        await session.execute(delete(Message).where(Message.chat_id.in_(CHAT_IDS + [QA_CHAT_ID, "empty_chat"])))
+        await session.execute(delete(Message).where(Message.chat_id.in_(CHAT_IDS)))
 
         now = datetime.now(timezone.utc)
 
         # Общий набор сообщений для активных чатов
+        # Format: (author_id, author_nick, content, time_offset)
         base_messages = [
-            ("Ирина", "Планируем релиз на пятницу", now - timedelta(days=2, hours=3)),
-            ("Павел", "Вчера обсуждали бюджет и сроки", now - timedelta(days=1, hours=5)),
-            ("Мария", "Ссылка на макеты: https://figma.com/file/demo", now - timedelta(days=1, hours=2)),
-            ("Олег", "Сегодня апдейт по бэкенду, всё по плану", now - timedelta(hours=1)),
+            ("user1", "irina", "Планируем релиз на пятницу", timedelta(days=2, hours=3)),
+            ("user2", "pavel", "Вчера обсуждали бюджет и сроки", timedelta(days=1, hours=5)),
+            ("user3", "maria", "Ссылка на макеты: https://figma.com/file/demo", timedelta(days=1, hours=2)),
+            ("user4", "oleg", "Сегодня апдейт по бэкенду, всё по плану", timedelta(hours=1)),
+            ("user1", "irina", "Нужно проверить метрики", timedelta(minutes=30)),
+            ("user2", "pavel", "Согласен, давайте созвонимся", timedelta(minutes=15)),
         ]
 
         messages = []
-        for chat_id in ["eval_chat_observer", "eval_chat_summarizer", "eval_orchestrator"]:
-            for author, content, ts in base_messages:
-                messages.append(
-                    Message(
-                        chat_id=chat_id,
-                        source="telegram",
-                        author_name=author,
-                        content=content,
-                        created_at=ts,
-                    )
+        # Наполняем только основной чат
+        for author_id, author_nick, content, offset in base_messages:
+            messages.append(
+                Message(
+                    chat_id="eval_main_chat",
+                    source="telegram",
+                    author_id=author_id,
+                    author_nick=author_nick,
+                    content=content,
+                    created_at=now - offset,
                 )
-
-        # Пустой чат
-        messages.extend(
-            [
-                # ничего не добавляем, просто оставляем empty_chat_observer пустым
-            ]
-        )
+            )
 
         session.add_all(messages)
         await session.commit()
 
-    print(f"✅ SQLite seeded: chat_ids={CHAT_IDS}, empty_chat_observer оставлен пустым")
-
-
-def seed_vector() -> None:
-    vdb = VectorDB()
-    # Очистить предыдущие документы для QA чата
-    try:
-        vdb.delete(where={"chat_id": QA_CHAT_ID})
-    except Exception:
-        pass
-
-    docs = [
-        "Проект Apollo: бюджет 50000 USD, дедлайн 1 декабря 2025, ответственный — Ольга.",
-        "Отчёт по инфраструктуре: миграция БД завершена, рисков не выявлено.",
-    ]
-    metas = [
-        {"source": "kb", "filename": "apollo.txt"},
-        {"source": "kb", "filename": "infra.txt"},
-    ]
-    vdb.add_texts(docs, metadatas=metas, chat_id=QA_CHAT_ID)
-    print(f"✅ Vector store seeded: chat_id={QA_CHAT_ID}, {len(docs)} docs")
+    print(f"✅ SQLite seeded: chat_ids={CHAT_IDS}")
 
 
 async def main() -> None:
     await seed_sqlite()
-    seed_vector()
 
 
 if __name__ == "__main__":
