@@ -1,9 +1,11 @@
 import asyncio
+import pytest
 from unittest.mock import AsyncMock, MagicMock
 from telegram import Update
 from telegram.error import BadRequest
 from telegram_bot.utils import send_safe_message
 
+@pytest.mark.asyncio
 async def test_send_safe_message():
     print("Testing send_safe_message...")
     

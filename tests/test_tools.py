@@ -24,7 +24,7 @@ async def test_fetch_messages_filters():
         result = fetch_messages(chat_id="chat1")
         assert "Alice (@alice): Test message" in result
         mock_get.assert_called_with(
-            chat_id="chat1", limit=50, since=None, author_id=None, author_nick=None, contains=None
+            chat_id="chat1", limit=10, since=None, author_id=None, author_nick=None, contains=None
         )
         
         # Test 2: With filters

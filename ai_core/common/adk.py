@@ -19,6 +19,27 @@ from google.api_core.exceptions import ResourceExhausted, InternalServerError, S
 from ai_core.common.config import settings
 from ai_core.common.logging import logger
 
+# ============================================================================
+# СТРАТЕГИЯ УПРАВЛЕНИЯ СЕССИЯМИ (SESSION MANAGEMENT)
+# ============================================================================
+# Один InMemorySessionService, два режима вызова.
+#
+# --- Через оркестратор (run_orchestrator, session_id = chat_id) ---
+# Orchestrator — stateful: хранит историю чата, чтобы понимать уточнения и продолжать диалог.
+# Chat Observer — stateful: наследует session_id оркестратора; нужно помнить предыдущие запросы поиска/QA.
+# Chat Summarizer — stateful в этом режиме: получает session_id оркестратора, чтобы учитывать ход разговора при суммаризации.
+# Simple Summarizer — stateful в этом режиме: работает как AgentTool внутри Chat Summarizer, разделяет его контекст для цельного ответа.
+#
+# --- Прямые вызовы сервисов (stateless, новый UUID на каждый запуск) ---
+# Orchestrator — не вызывается напрямую сервисными функциями.
+# Chat Observer — не вызывается напрямую сервисными функциями.
+# Chat Summarizer — stateless: run_summarizer / run_document_summarizer создают session_id="summarizer_<chat>_<uuid>";
+#   причина: каждое саммари — независимая задача, контекст прошлых запусков не нужен.
+# Simple Summarizer — stateless: напрямую не вызывается; в статлес-режиме получает временный UUID, потому что обрабатывает только данный текст.
+#
+# Если session_id не передан явно, run_agent_sync сгенерирует UUID (stateless по умолчанию).
+# ============================================================================
+
 # Ensure API key is set
 if not os.environ.get("GOOGLE_API_KEY"):
     os.environ["GOOGLE_API_KEY"] = settings.GOOGLE_API_KEY

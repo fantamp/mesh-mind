@@ -34,7 +34,7 @@ def test_fetch_messages_success(mock_run_async, mock_get_messages):
     
     result = fetch_messages(chat_id="chat1")
     
-    expected_output = "[2023-01-01 12:00:00] User: Hello\n[2023-01-01 12:00:05] Bot: Hi there"
+    expected_output = "[2023-01-01 12:00:00] User: Hello\n\n\n[2023-01-01 12:00:05] Bot: Hi there"
     assert result == expected_output
 
 def test_fetch_messages_empty(mock_run_async, mock_get_messages):

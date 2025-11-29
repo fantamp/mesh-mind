@@ -2,12 +2,7 @@ from .db import (
     init_db,
     save_message,
     get_messages,
-    get_chat_state,
-    update_chat_state,
-    save_document_metadata,
-    Message,
-    ChatState,
-    DocumentMetadata
+    Message
 )
 from .fs import save_file
 
@@ -15,11 +10,6 @@ __all__ = [
     "init_db",
     "save_message",
     "get_messages",
-    "get_chat_state",
-    "update_chat_state",
-    "save_document_metadata",
     "Message",
-    "ChatState",
-    "DocumentMetadata",
     "save_file"
 ]

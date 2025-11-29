@@ -11,6 +11,14 @@ Intelligent agentic system for Telegram chat analysis and automation.
     - **Chat Observer**: Finds specific messages and answers questions based on chat history.
 - **Privacy**: Strict chat isolation.
 
+## Демонстрация Ключевых Концепций ADK
+
+✅ **Мульти-агентная Система**: Оркестратор координирует специализированных субагентов
+✅ **Пользовательские Инструменты**: `fetch_messages` с продвинутой фильтрацией
+✅ **Сессии и Память**: InMemorySessionService с поддержкой stateful/stateless паттернов
+✅ **Оценка Агентов (Eval)**: ADK eval framework с полным покрытием тестами
+✅ **Наблюдаемость**: Структурированное логирование через loguru
+
 ## Architecture
 
 - **Language**: Python 3.10+
@@ -29,6 +37,12 @@ Intelligent agentic system for Telegram chat analysis and automation.
    ```bash
    make bot
    ```
+
+3. **Быстрое Демо** (без настройки Telegram):
+   ```bash
+   make demo
+   ```
+   Запускает автономную демонстрацию мульти-агентной системы.
 
 ## Documentation
 

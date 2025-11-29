@@ -6,6 +6,18 @@ from ai_core.common.config import settings
 from ai_core.tools.messages import fetch_messages
 from ai_core.agents.summarizer.agent import agent as simple_summarizer
 
+# ============================================================================
+# РЕШЕНИЯ ПО ПРОЕКТИРОВАНИЮ: Chat Summarizer Agent
+# ============================================================================
+# 
+# 1. Использование инструментов (Tools):
+#    - Использует `fetch_messages` для получения данных, а не полагается на контекст
+#    - Использует `simple_summarizer` как под-агента (через AgentTool) для обработки текста
+#
+# 2. Stateless сессии (session_id = unique UUID):
+#    - Каждая суммаризация независима
+#    - Не требует хранения контекста предыдущих запросов
+# ============================================================================
 agent = LlmAgent(
     name="chat_summarizer",
     model=settings.GEMINI_MODEL_SMART,

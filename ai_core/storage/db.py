@@ -28,20 +28,7 @@ async_session = sessionmaker(
 
 from ai_core.common.models import Message
 
-class ChatState(SQLModel, table=True):
-    __tablename__ = "chat_state"
-    
-    chat_id: str = Field(primary_key=True)
-    last_summary_message_id: Optional[str] = None
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class DocumentMetadata(SQLModel, table=True):
-    __tablename__ = "documents"
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    filename: str
-    file_path: str
-    upload_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Functions
 
@@ -102,56 +89,6 @@ async def get_messages(
         result = await session.execute(statement)
         return result.scalars().all()
 
-async def get_messages_after_id(chat_id: str, after_message_id: str, limit: int = 50) -> List[Message]:
-    """
-    Получить сообщения из чата, отправленные после указанного сообщения.
-    """
-    async with async_session() as session:
-        # Сначала найдем сообщение, от которого отталкиваемся
-        ref_msg_stmt = select(Message).where(Message.id == after_message_id)
-        ref_msg_result = await session.execute(ref_msg_stmt)
-        ref_msg = ref_msg_result.scalars().first()
-        
-        if not ref_msg:
-            # Если сообщение не найдено (удалено?), вернем просто последние limit
-            return await get_messages(chat_id, limit=limit)
-            
-        # Выбираем сообщения новее найденного
-        statement = select(Message).where(
-            Message.chat_id == chat_id,
-            Message.created_at > ref_msg.created_at
-        ).order_by(Message.created_at.desc()).limit(limit)
-        
-        result = await session.execute(statement)
-        return result.scalars().all()
 
-async def get_chat_state(chat_id: str) -> Optional[ChatState]:
-    async with async_session() as session:
-        statement = select(ChatState).where(ChatState.chat_id == chat_id)
-        result = await session.execute(statement)
-        return result.scalars().first()
 
-async def update_chat_state(chat_id: str, last_msg_id: str) -> ChatState:
-    async with async_session() as session:
-        statement = select(ChatState).where(ChatState.chat_id == chat_id)
-        result = await session.execute(statement)
-        state = result.scalars().first()
-        
-        if not state:
-            state = ChatState(chat_id=chat_id, last_summary_message_id=last_msg_id, updated_at=datetime.now(timezone.utc))
-            session.add(state)
-        else:
-            state.last_summary_message_id = last_msg_id
-            state.updated_at = datetime.now(timezone.utc)
-            session.add(state)
-            
-        await session.commit()
-        await session.refresh(state)
-        return state
 
-async def save_document_metadata(doc: DocumentMetadata) -> DocumentMetadata:
-    async with async_session() as session:
-        session.add(doc)
-        await session.commit()
-        await session.refresh(doc)
-        return doc
