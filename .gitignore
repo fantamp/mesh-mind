@@ -1,4 +1,6 @@
 .env
+.python-version
+mesh-mind.log
 
 # Python
 venv
