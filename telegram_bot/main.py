@@ -55,11 +55,10 @@ async def monitor_loop(application: Application):
             logger.error(f"Error in monitor loop: {e}")
             await asyncio.sleep(60) # Wait a bit before retrying on error
 
-async def post_init(application: Application) -> None:
-    """Notify admins that the bot has started and start background tasks."""
-    # Start the monitor loop
-    asyncio.create_task(monitor_loop(application))
-
+async def send_startup_notification(application: Application):
+    """Sends startup notification after a short delay."""
+    await asyncio.sleep(5) # Wait for bot to fully initialize
+    
     if not ALLOWED_CHAT_IDS:
         return
     
@@ -70,6 +69,13 @@ async def post_init(application: Application) -> None:
             await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
         except Exception as e:
             logger.warning(f"Failed to send startup message to {chat_id}: {e}")
+
+async def post_init(application: Application) -> None:
+    """Notify admins that the bot has started and start background tasks."""
+    # Start the monitor loop
+    asyncio.create_task(monitor_loop(application))
+    # Start notification task
+    asyncio.create_task(send_startup_notification(application))
 
 def main() -> None:
     """Start the bot."""
