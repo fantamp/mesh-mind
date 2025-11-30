@@ -40,7 +40,7 @@ def restart_application() -> str:
     sys.stderr.flush()
     
     print("Initiating restart via Maintenance Agent...")
-    sys.exit(0)
+    os._exit(0)
     # Unreachable code
     return "Restarting..." 
 
