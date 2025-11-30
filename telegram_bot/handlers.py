@@ -151,7 +151,7 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
             reply.append(f"<blockquote><i>{preview_text}</i></blockquote>")
 
         if not is_forwarded(update.message):
-            contexted_text = f"Context: chat_id={chat.id}\nUser message in the group Telegram chat:\n\n{text}"
+            contexted_text = f"Context: chat_id={chat.id}\nMedia type: {media_type}\nUser message in the group Telegram chat:\n\n{text}"
             agent_response = await asyncio.to_thread(
                 run_agent_sync,
                 agent=orchestrator,
