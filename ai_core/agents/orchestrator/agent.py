@@ -15,8 +15,7 @@ from ai_core.agents.maintenance_agent.agent import agent as maintenance_agent
 #    - Избегает хрупкого сопоставления по ключевым словам (например, if/else)
 #    - Оркестратор анализирует запрос пользователя и направляет его специализированному агенту
 #
-# 2. Тихий режим (возврат "null" для обычных сообщений):
-#    - Предотвращает спам бота в групповых чатах
+# 2. Тихий режим:
 #    - Отвечает только на прямые вопросы/команды
 #
 # 3. Повторное использование сессии (session_id = chat_id):
@@ -43,7 +42,7 @@ ROUTING LOGIC:
     - Examples: "Update the bot", "Restart server", "Show me the logs".
 
 SILENT MODE:
-- If the user's message does not contain a direct question, a request for summary, or specific keywords triggering an action, and is just a general chat message not addressed to you, you MUST return "null" (string) or an empty response.
+- If the user's message does not contain a direct question, a request for summary, or specific keywords triggering an action, but it is a voice message, then return a very short, 1-2 sentence summary of the message's meaning in the format "The voice message was about..." using the language of the user.
 - Do not respond to casual conversation unless explicitly addressed.
 
 Always delegate the task if a sub-agent is suitable.
