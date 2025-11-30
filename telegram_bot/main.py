@@ -10,7 +10,9 @@ from telegram_bot.handlers import (
     handle_voice_or_text_message,
     error_handler
 )
+import asyncio
 from telegram_bot.utils import ALLOWED_CHAT_IDS
+from telegram_bot.monitor import CommitMonitor
 
 # Load environment variables
 load_dotenv()
@@ -24,8 +26,40 @@ logger = logging.getLogger(__name__)
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+async def monitor_loop(application: Application):
+    """Background task to check for new commits every 15 minutes.
+    
+    See docs/features/new-commit-notify.md for more details.
+    """
+    monitor = CommitMonitor()
+    
+    while True:
+        try:
+            # Wait 15 minutes
+            await asyncio.sleep(15 * 60)
+            
+            logger.info("Checking for new commits...")
+            new_commits = await asyncio.to_thread(monitor.check_for_updates)
+            
+            if new_commits:
+                msg = "🚀 **New Commits Detected!**\n\n" + "\n".join(new_commits)
+                msg += "\n\n_Use 'Update the bot' to pull changes._"
+                
+                for chat_id in ALLOWED_CHAT_IDS:
+                    try:
+                        await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                    except Exception as e:
+                        logger.warning(f"Failed to send commit notification to {chat_id}: {e}")
+                        
+        except Exception as e:
+            logger.error(f"Error in monitor loop: {e}")
+            await asyncio.sleep(60) # Wait a bit before retrying on error
+
 async def post_init(application: Application) -> None:
-    """Notify admins that the bot has started."""
+    """Notify admins that the bot has started and start background tasks."""
+    # Start the monitor loop
+    asyncio.create_task(monitor_loop(application))
+
     if not ALLOWED_CHAT_IDS:
         return
     
