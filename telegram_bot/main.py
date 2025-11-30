@@ -37,7 +37,7 @@ async def monitor_loop(application: Application):
     while True:
         try:
             # Wait 15 minutes
-            await asyncio.sleep(15 * 60)
+            await asyncio.sleep(5 * 60)
             
             logger.info("Checking for new commits...")
             new_commits = await asyncio.to_thread(monitor.check_for_updates)
