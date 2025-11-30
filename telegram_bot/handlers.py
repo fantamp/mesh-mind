@@ -4,6 +4,7 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 import os
+import html
 from datetime import datetime, timezone
 
 from telegram_bot.utils import (
@@ -145,7 +146,9 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
 
         MAX_TRANSCRIPTION_PREVIEW_LENGTH = 140
         if media_type == "voice":
-            reply.append(f"*Transcription: {text[:MAX_TRANSCRIPTION_PREVIEW_LENGTH]}...*" if len(text) > MAX_TRANSCRIPTION_PREVIEW_LENGTH else f"*Transcription: {text}*")
+            escaped_text = html.escape(text)
+            preview_text = escaped_text[:MAX_TRANSCRIPTION_PREVIEW_LENGTH] + "..." if len(escaped_text) > MAX_TRANSCRIPTION_PREVIEW_LENGTH else escaped_text
+            reply.append(f"<blockquote><i>{preview_text}</i></blockquote>")
 
         if not is_forwarded(update.message):
             contexted_text = f"Context: chat_id={chat.id}\nUser message in the group Telegram chat:\n\n{text}"
@@ -159,13 +162,15 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
         
     except Exception as e:
         logger.error(f"Got an error: {e}")
-        reply.append(f"Got an error during processing: {e}")
+        reply.append(f"Got an error during processing: {html.escape(str(e))}")
     finally:        
         if not agent_response and is_message_saved and not settings.BOT_SILENT_MODE:
             reply.append("Message saved.")
 
         if reply:
-            await update.message.reply_text("\n".join([f"- {r}" for r in reply]), parse_mode="Markdown")
+            # Join with newlines, but since blockquote is a block element, it handles its own spacing mostly.
+            # However, for HTML parse mode, we just concatenate.
+            await update.message.reply_text("\n".join(reply), parse_mode="HTML")
         if agent_response:
             await send_safe_message(update, agent_response)
 
