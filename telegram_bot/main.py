@@ -1,6 +1,10 @@
 import os
 import logging
 from dotenv import load_dotenv
+
+# Load environment variables first, before importing modules that rely on them
+load_dotenv()
+
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
@@ -13,9 +17,6 @@ from telegram_bot.handlers import (
 import asyncio
 from telegram_bot.utils import ALLOWED_CHAT_IDS
 from telegram_bot.monitor import CommitMonitor
-
-# Load environment variables
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -62,7 +63,7 @@ async def send_startup_notification(application: Application):
     if not ALLOWED_CHAT_IDS:
         return
     
-    msg = "🤖 **System Notification**\n\nBot has successfully (re)started and is ready to serve."
+    msg = "🤖 *System Notification*\n\nBot has successfully (re)started and is ready to serve."
     
     for chat_id in ALLOWED_CHAT_IDS:
         try:
