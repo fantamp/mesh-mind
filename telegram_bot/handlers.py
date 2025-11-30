@@ -143,8 +143,9 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
         await save_message(msg)
         is_message_saved = True
 
+        MAX_TRANSCRIPTION_PREVIEW_LENGTH = 140
         if media_type == "voice":
-            reply.append(f"*Transcription: {text[:80]}...*" if len(text) > 80 else f"*Transcription: {text}*")
+            reply.append(f"*Transcription: {text[:MAX_TRANSCRIPTION_PREVIEW_LENGTH]}...*" if len(text) > MAX_TRANSCRIPTION_PREVIEW_LENGTH else f"*Transcription: {text}*")
 
         if not is_forwarded(update.message):
             contexted_text = f"Context: chat_id={chat.id}\nUser message in the group Telegram chat:\n\n{text}"
