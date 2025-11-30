@@ -5,7 +5,7 @@ bot:
 	python -m telegram_bot.main
 
 bot-tmux:
-	python -m telegram_bot.main 2>&1 | tee -a mesh-mind.log
+	./run_forever.sh 2>&1 | tee -a mesh-mind.log
 
 install:
 	pip install -r requirements.txt

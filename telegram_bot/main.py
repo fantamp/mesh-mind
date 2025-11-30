@@ -10,6 +10,7 @@ from telegram_bot.handlers import (
     handle_voice_or_text_message,
     error_handler
 )
+from telegram_bot.utils import ALLOWED_CHAT_IDS
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +24,19 @@ logger = logging.getLogger(__name__)
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+async def post_init(application: Application) -> None:
+    """Notify admins that the bot has started."""
+    if not ALLOWED_CHAT_IDS:
+        return
+    
+    msg = "🤖 **System Notification**\n\nBot has successfully (re)started and is ready to serve."
+    
+    for chat_id in ALLOWED_CHAT_IDS:
+        try:
+            await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+        except Exception as e:
+            logger.warning(f"Failed to send startup message to {chat_id}: {e}")
+
 def main() -> None:
     """Start the bot."""
     if not TELEGRAM_BOT_TOKEN:
@@ -30,7 +44,7 @@ def main() -> None:
         return
 
     # Build Application
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
 
     # Commands
     application.add_handler(CommandHandler("start", start_command))
