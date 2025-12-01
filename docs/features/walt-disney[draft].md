@@ -205,7 +205,8 @@ ALGORITHM WaltDisneyStrategy():
 
 
 
-
+## See also
+https://github.com/uddhav/creative-thinking
 
 
 
