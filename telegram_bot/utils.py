@@ -12,8 +12,6 @@ ALLOWED_CHAT_IDS = [int(cid.strip()) for cid in TELEGRAM_ALLOWED_CHAT_IDS.split(
 
 def is_chat_allowed(chat_id: int) -> bool:
     """Check if the chat ID is allowed."""
-    if not ALLOWED_CHAT_IDS:
-        return True # Allow all if whitelist is empty
     return chat_id in ALLOWED_CHAT_IDS
 
 def is_forwarded(message) -> bool:
