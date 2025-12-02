@@ -61,23 +61,26 @@ async def test_handle_text_message_success(mock_update, mock_context):
     mock_update.effective_user.username = "nick"
     mock_update.effective_chat.id = 456
     
+    # Mock canvas service
+    mock_canvas = MagicMock()
+    mock_canvas.id = "canvas_uuid"
+    
     with patch("telegram_bot.handlers.is_chat_allowed", return_value=True), \
-         patch("telegram_bot.handlers.save_message", new_callable=AsyncMock) as mock_save, \
+         patch("ai_core.services.canvas_service.canvas_service") as mock_canvas_service, \
          patch("telegram_bot.handlers.run_agent_sync") as mock_run_agent_sync, \
          patch("telegram_bot.handlers.is_forwarded", return_value=False):
+        
+        # Setup mock returns
+        mock_canvas_service.get_or_create_canvas_for_chat = AsyncMock(return_value=mock_canvas)
+        mock_canvas_service.add_element = AsyncMock()
         
         # Mock run_agent_sync to return a response
         mock_run_agent_sync.return_value = "Orchestrator reply"
         
         await handle_voice_or_text_message(mock_update, mock_context)
     
-        mock_save.assert_called_once()
+        mock_canvas_service.add_element.assert_called_once()
         mock_run_agent_sync.assert_called_once()
-        # reply_text called with reply
-        # Note: handle_voice_or_text_message uses send_safe_message for agent response
-        # We should check if send_safe_message was called, but here we patched run_agent_sync
-        # Let's check if send_safe_message was mocked or if we need to mock it.
-        # The handler imports send_safe_message. Let's patch it too to be safe.
         pass
 
 @pytest.mark.asyncio
@@ -98,10 +101,14 @@ async def test_handle_voice_message_success(mock_update, mock_context):
     # Mock download_to_drive
     mock_file.download_to_drive.return_value = None
     
+    # Mock canvas service
+    mock_canvas = MagicMock()
+    mock_canvas.id = "canvas_uuid"
+    
     with patch("telegram_bot.handlers.is_chat_allowed", return_value=True), \
          patch("telegram_bot.handlers.Path") as mock_path, \
          patch("telegram_bot.handlers.TranscriptionService") as MockTranscriptionService, \
-         patch("telegram_bot.handlers.save_message", new_callable=AsyncMock) as mock_save, \
+         patch("ai_core.services.canvas_service.canvas_service") as mock_canvas_service, \
          patch("telegram_bot.handlers.run_agent_sync") as mock_run_agent_sync, \
          patch("telegram_bot.handlers.is_forwarded", return_value=False):
         
@@ -114,6 +121,10 @@ async def test_handle_voice_message_success(mock_update, mock_context):
         mock_transcription_service = MockTranscriptionService.return_value
         mock_transcription_service.transcribe = AsyncMock(return_value="transcribed text")
         
+        # Setup mock returns
+        mock_canvas_service.get_or_create_canvas_for_chat = AsyncMock(return_value=mock_canvas)
+        mock_canvas_service.add_element = AsyncMock()
+        
         mock_run_agent_sync.return_value = "Orchestrator reply"
 
         await handle_voice_or_text_message(mock_update, mock_context)
@@ -121,7 +132,7 @@ async def test_handle_voice_message_success(mock_update, mock_context):
         mock_context.bot.get_file.assert_called_once_with("voice_123")
         mock_file.download_to_drive.assert_called_once()
         mock_transcription_service.transcribe.assert_called_once()
-        mock_save.assert_called_once()
+        mock_canvas_service.add_element.assert_called_once()
         mock_run_agent_sync.assert_called_once()
 
 # --- help_command Tests ---

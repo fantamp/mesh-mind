@@ -15,12 +15,13 @@ from ai_core.tools.canvas_ops import (
     create_element
 )
 
-agent = LlmAgent(
-    name="canvas_manager",
-    model=settings.GEMINI_MODEL_SMART,
-    description="Agent responsible for managing and organizing the canvas",
-    instruction="""You are the Canvas Manager and Observer.
-Your goal is to help the user organize their thoughts and information on the Canvas and observe the canvas.
+def create_agent():
+    return LlmAgent(
+        name="canvas_manager",
+        model=settings.GEMINI_MODEL_SMART,
+        description="Agent responsible for managing and organizing the canvas",
+        instruction="""You are the Canvas Manager and Observer.
+Your goal is to help the user organize their thoughts and information on the Canvas and observe the Canvas.
 
 CAPABILITIES:
 1. **Manage Canvas**: You can rename the current canvas to reflect its topic.
@@ -54,23 +55,24 @@ TOOLS:
 - `add_element_to_frame`: Add an element to a group (can be in multiple).
 - `remove_element_from_frame`: Remove an element from a group.
 - `set_element_name`: Name an element.
-- `set_element_name`: Name an element.
 - `create_element`: Create a new element. You MUST provide `created_by` (e.g. your agent name or context source).
 - `fetch_elements`: Find content (use include_details=True for full info).
 """,
-    tools=[
-        fetch_elements,
-        get_current_canvas_info,
-        set_canvas_name,
-        create_canvas_frame,
-        set_frame_name,
-        list_canvas_frames,
-        add_element_to_frame,
-        remove_element_from_frame,
-        set_element_name,
-        create_element
-    ],
-)
+        tools=[
+            fetch_elements,
+            get_current_canvas_info,
+            set_canvas_name,
+            create_canvas_frame,
+            set_frame_name,
+            list_canvas_frames,
+            add_element_to_frame,
+            remove_element_from_frame,
+            set_element_name,
+            create_element
+        ],
+    )
+
+agent = create_agent()
 
 # ADK ожидает root_agent на уровне модуля
 root_agent = agent

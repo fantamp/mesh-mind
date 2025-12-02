@@ -1,8 +1,40 @@
 import asyncio
-from typing import TypeVar, Coroutine, Any
+import functools
+import logging
+from typing import TypeVar, Coroutine, Any, Callable
+
 from concurrent.futures import ThreadPoolExecutor
 
+logger = logging.getLogger(__name__)
+
 T = TypeVar("T")
+
+def log_tool_call(func: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator to log tool calls with smart truncation of long string arguments.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Helper to process values
+        def process_val(v):
+            if isinstance(v, str) and len(v) > 100:
+                return v[:100] + "..."
+            return v
+
+        # Process args and kwargs for logging
+        log_args = [process_val(a) for a in args]
+        log_kwargs = {k: process_val(v) for k, v in kwargs.items()}
+        
+        logger.info(f"Tool Call: {func.__name__} | Args: {log_args} | Kwargs: {log_kwargs}")
+        
+        result = func(*args, **kwargs)
+        
+        # Log result
+        log_result = process_val(result)
+        logger.info(f"Tool Result: {func.__name__} | Result: {log_result}")
+        
+        return result
+    return wrapper
 
 def run_async(coro: Coroutine[Any, Any, T]) -> T:
     """

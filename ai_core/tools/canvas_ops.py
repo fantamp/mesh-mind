@@ -1,8 +1,9 @@
 from typing import Optional, List, Dict, Any
 import uuid
-from ai_core.tools.utils import run_async
+from ai_core.tools.utils import run_async, log_tool_call
 from ai_core.services.canvas_service import canvas_service
 
+@log_tool_call
 def get_current_canvas_info(chat_id: str) -> str:
     """
     Returns information about the current canvas for the chat.
@@ -12,6 +13,7 @@ def get_current_canvas_info(chat_id: str) -> str:
         return f"Canvas ID: {canvas.id}\nName: {canvas.name or 'Unnamed'}"
     return run_async(_do())
 
+@log_tool_call
 def set_canvas_name(chat_id: str, name: str) -> str:
     """
     Sets the name of the current canvas.
@@ -22,10 +24,15 @@ def set_canvas_name(chat_id: str, name: str) -> str:
         return f"Canvas renamed to: {updated.name}"
     return run_async(_do())
 
-def create_canvas_frame(chat_id: str, name: str, parent_frame_id: Optional[str] = None) -> str:
+@log_tool_call
+def create_canvas_frame(chat_id: int, name: str, parent_frame_id: Optional[str] = None) -> str:
     """
     Creates a new frame in the current canvas.
     """
+    
+    if not isinstance(chat_id, int):
+        return "Error: chat_id must be an integer."
+    
     async def _do():
         canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
         parent_uuid = uuid.UUID(parent_frame_id) if parent_frame_id else None
@@ -33,6 +40,7 @@ def create_canvas_frame(chat_id: str, name: str, parent_frame_id: Optional[str] 
         return f"Frame created: {frame.name} (ID: {frame.id})"
     return run_async(_do())
 
+@log_tool_call
 def set_frame_name(frame_id: str, name: str) -> str:
     """
     Renames a frame.
@@ -45,10 +53,15 @@ def set_frame_name(frame_id: str, name: str) -> str:
         return "Frame not found."
     return run_async(_do())
 
-def list_canvas_frames(chat_id: str) -> str:
+@log_tool_call
+def list_canvas_frames(chat_id: int) -> str:
     """
     Lists all frames in the current canvas.
     """
+
+    if not isinstance(chat_id, int):
+        return "Error: chat_id must be an integer."
+    
     async def _do():
         canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
         frames = await canvas_service.get_frames(canvas.id)
@@ -62,6 +75,7 @@ def list_canvas_frames(chat_id: str) -> str:
         return "\n".join(lines)
     return run_async(_do())
 
+@log_tool_call
 def add_element_to_frame(element_id: str, frame_id: str) -> str:
     """
     Adds an element to a specific frame (an element can be in multiple frames).
@@ -75,6 +89,7 @@ def add_element_to_frame(element_id: str, frame_id: str) -> str:
         return "Failed to add element to frame (maybe already there)."
     return run_async(_do())
 
+@log_tool_call
 def remove_element_from_frame(element_id: str, frame_id: str) -> str:
     """
     Removes an element from a specific frame.
@@ -88,6 +103,7 @@ def remove_element_from_frame(element_id: str, frame_id: str) -> str:
         return "Failed to remove element from frame (maybe not there)."
     return run_async(_do())
 
+@log_tool_call
 def set_element_name(element_id: str, name: str) -> str:
     """
     Sets a short human-readable name for an element.
@@ -101,6 +117,7 @@ def set_element_name(element_id: str, name: str) -> str:
     return run_async(_do())
 
 
+@log_tool_call
 def create_element(
     chat_id: int,
     content: str,

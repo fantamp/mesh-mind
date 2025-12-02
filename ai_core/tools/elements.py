@@ -1,8 +1,10 @@
+import uuid
 from typing import Optional
 from datetime import datetime
-from ai_core.tools.utils import run_async
+from ai_core.tools.utils import run_async, log_tool_call
 # from ai_core.storage.db import get_messages # Removed
 
+@log_tool_call
 def fetch_elements(
     chat_id: int,
     limit: int = 10,
@@ -10,7 +12,8 @@ def fetch_elements(
     author_id: Optional[str] = None,
     author_nick: Optional[str] = None,
     contains: Optional[str] = None,
-    include_details: bool = False
+    include_details: bool = False,
+    frame_id: Optional[str] = None
 ) -> str:
     """
     Fetches elements (messages, notes, etc.) from the canvas history based on criteria.
@@ -26,34 +29,32 @@ def fetch_elements(
         contains: Substring search in content.
         include_details: If True, returns all available fields (canvas_id, frame_ids, attributes). 
                          If False (default), returns only id, type, created_at, author, and content.
+        frame_id: Optional ID of the frame to filter by. Must belong to the chat's canvas.
         
     Returns:
         A JSON string representing a list of elements.
-        Example (include_details=False):
-        [
-            {
-                "id": "uuid",
-                "type": "message",
-                "created_at": "ISO-timestamp",
-                "author": "user_id",
-                "content": "text"
-            }
-        ]
-        
-        Example (include_details=True):
-        [
-            {
-                "id": "uuid",
-                "type": "message",
-                "created_at": "ISO-timestamp",
-                "author": "user_id",
-                "content": "text",
-                "canvas_id": "uuid",
-                "frame_ids": ["uuid"],
-                "attributes": {...}
-            }
-        ]
     """
+    return run_async(_fetch_elements_impl(
+        chat_id=chat_id,
+        limit=limit,
+        since=since,
+        author_id=author_id,
+        author_nick=author_nick,
+        contains=contains,
+        include_details=include_details,
+        frame_id=frame_id
+    ))
+
+async def _fetch_elements_impl(
+    chat_id: int,
+    limit: int = 10,
+    since: Optional[str] = None,
+    author_id: Optional[str] = None,
+    author_nick: Optional[str] = None,
+    contains: Optional[str] = None,
+    include_details: bool = False,
+    frame_id: Optional[str] = None
+) -> str:
     if not chat_id or type(chat_id) != int:
         return "Error: chat_id is required. It must be an integer."
 
@@ -64,21 +65,31 @@ def fetch_elements(
         except ValueError:
             return f"Error: Invalid date format for 'since': {since}. Use ISO format (YYYY-MM-DDTHH:MM:SS)."
 
+    frame_uuid = None
+    if frame_id:
+        try:
+            frame_uuid = uuid.UUID(frame_id)
+        except ValueError:
+            return f"Error: Invalid frame_id format: {frame_id}"
+
     try:
         # Resolve canvas for chat
         from ai_core.services.canvas_service import canvas_service
         
-        # We need to run async code in sync tool
-        async def _fetch():
-            canvas = await canvas_service.get_or_create_canvas_for_chat(str(chat_id))
-            return await canvas_service.get_elements(
-                canvas_id=canvas.id,
-                limit=limit,
-                since=since_dt,
-                # type="message" # Removed type filter to fetch all elements as per name change
-            )
-
-        elements = run_async(_fetch())
+        canvas = await canvas_service.get_or_create_canvas_for_chat(str(chat_id))
+        
+        # Verify frame belongs to canvas if frame_id is provided
+        if frame_uuid:
+            frames = await canvas_service.get_frames(canvas.id)
+            if frame_uuid not in [f.id for f in frames]:
+                return "Error: Frame not found in this chat."
+        
+        elements = await canvas_service.get_elements(
+            canvas_id=canvas.id,
+            limit=limit,
+            since=since_dt,
+            frame_id=frame_uuid
+        )
         
     except Exception as e:
         return f"Error fetching elements: {str(e)}"

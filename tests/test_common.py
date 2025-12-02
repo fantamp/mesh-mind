@@ -3,8 +3,9 @@ import os
 
 # sys.path hack removed
 
-from ai_core.common import settings, setup_logging, Message, Document
+from ai_core.common import settings, setup_logging, CanvasElement
 from loguru import logger
+import uuid
 
 def test_common_lib():
     print("--- Testing Common Library ---")
@@ -27,25 +28,37 @@ def test_common_lib():
     
     # 3. Test Models
     print("\n3. Testing Models:")
-    msg = Message(
-        source="telegram",
-        chat_id="test_chat",
-        author_id="123",
-        author_name="Test User",
-        content="Hello World"
+    
+    # Simulate a Message
+    msg = CanvasElement(
+        canvas_id=uuid.uuid4(),
+        type="message",
+        content="Hello World",
+        created_by="telegram:123",
+        attributes={
+            "source": "telegram",
+            "chat_id": "test_chat",
+            "author_name": "Test User"
+        }
     )
-    print(f"   Message created: {msg}")
+    print(f"   Message (CanvasElement) created: {msg}")
     assert msg.id is not None
     assert msg.created_at is not None
+    assert msg.type == "message"
     
-    doc = Document(
-        filename="test.txt",
+    # Simulate a Document
+    doc = CanvasElement(
+        canvas_id=uuid.uuid4(),
+        type="file",
         content="Test content",
-        doc_metadata={"author": "me", "tags": ["test"]}
+        created_by="user:me",
+        attributes={
+            "filename": "test.txt",
+            "author": "me", 
+            "tags": ["test"]
+        }
     )
-    print(f"   Document created: {doc}")
-    assert doc.doc_metadata["author"] == "me"
+    print(f"   Document (CanvasElement) created: {doc}")
+    assert doc.attributes["author"] == "me"
     
     print("\n--- Verification Successful ---")
-
-# Main block removed
