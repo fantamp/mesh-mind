@@ -9,7 +9,7 @@ from ai_core.common.models import Canvas, CanvasElement, CanvasFrame
 
 class CanvasService:
     
-    async def get_or_create_canvas_for_chat(self, chat_id: str) -> Canvas:
+    async def get_or_create_canvas_for_chat(self, chat_id: str, create_if_not_found: bool = True) -> Canvas:
         """
         Retrieves a canvas accessible by the given chat_id, or creates one if none exists.
         For MVP, we assume 1:1 mapping, but the schema supports N:N.
@@ -35,6 +35,9 @@ class CanvasService:
                     return canvas
             
             # 2. If not found, create new
+            if not create_if_not_found:
+                raise ValueError(f"Canvas not found for chat_id: {chat_id}")
+
             new_canvas = Canvas(
                 name=f"Chat {chat_id}",
                 access_rules=[auth_key]

@@ -23,5 +23,3 @@ SAFETY PROTOCOLS:
 """,
     tools=[update_codebase, restart_application, get_recent_logs, check_version_status]
 )
-
-root_agent = agent

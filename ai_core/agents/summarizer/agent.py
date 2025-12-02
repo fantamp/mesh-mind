@@ -25,6 +25,3 @@ HOW TO WORK:
 """,
     tools=[]
 )
-
-# Expose agent for ADK (ожидает root_agent)
-root_agent = agent

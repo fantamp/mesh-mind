@@ -24,6 +24,3 @@ Do not try to summarize the text yourself as the tool is available.
         fetch_elements, 
     ]
 )
-
-# ADK ожидает root_agent на уровне модуля
-root_agent = agent
