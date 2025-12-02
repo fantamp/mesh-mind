@@ -15,8 +15,6 @@ from telegram_bot.utils import (
 )
 
 from ai_core.common.config import settings
-from ai_core.storage.db import save_message
-from ai_core.common.models import Message
 from ai_core.common.transcription import TranscriptionService
 from ai_core.agents.orchestrator.agent import root_agent as orchestrator
 from ai_core.common.adk import run_agent_sync
@@ -130,18 +128,24 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
     reply = []
     
     try:
-        msg = Message(
-            source="telegram",
-            chat_id=str(chat.id),
-            author_id=author_id or str(user.id),
-            author_name=author_name or user.full_name,
-            author_nick=author_nick or user.username,
+        # Get or create canvas
+        from ai_core.services.canvas_service import canvas_service
+        canvas = await canvas_service.get_or_create_canvas_for_chat(str(chat.id))
+        
+        # Save to canvas
+        await canvas_service.add_element(
+            canvas_id=canvas.id,
+            type=media_type, # "text" or "voice"
             content=text,
-            created_at=datetime.fromtimestamp(update.message.date.timestamp(), tz=timezone.utc),
-            media_type=media_type,
-            media_path=""
+            created_by=author_id or str(user.id),
+            attributes={
+                "source": "telegram",
+                "source_msg_id": str(update.message.message_id),
+                "author_name": author_name or user.full_name,
+                "author_nick": author_nick or user.username,
+                "media_path": ""
+            }
         )
-        await save_message(msg)
         is_message_saved = True
 
         MAX_TRANSCRIPTION_PREVIEW_LENGTH = 140

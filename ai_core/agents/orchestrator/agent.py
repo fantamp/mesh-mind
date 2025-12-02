@@ -3,25 +3,9 @@ from ai_core.common.config import settings
 
 # Import sub-agents
 from ai_core.agents.chat_summarizer.agent import agent as chat_summarizer
-from ai_core.agents.chat_observer.agent import agent as chat_observer
+from ai_core.agents.canvas_manager.agent import agent as canvas_manager
 from ai_core.agents.maintenance_agent.agent import agent as maintenance_agent
 
-# ============================================================================
-# РЕШЕНИЯ ПО ПРОЕКТИРОВАНИЮ: Orchestrator Agent
-# ============================================================================
-# 
-# 1. Мульти-агентный подход через sub_agents:
-#    - Позволяет делегировать задачи на основе намерений (intent) на естественном языке
-#    - Избегает хрупкого сопоставления по ключевым словам (например, if/else)
-#    - Оркестратор анализирует запрос пользователя и направляет его специализированному агенту
-#
-# 2. Тихий режим:
-#    - Отвечает только на прямые вопросы/команды
-#
-# 3. Повторное использование сессии (session_id = chat_id):
-#    - InMemorySessionService сохраняет контекст разговора для каждого чата
-#    - Обеспечивает многоходовые взаимодействия без потери истории
-# ============================================================================
 agent = LlmAgent(
     name="orchestrator",
     model=settings.GEMINI_MODEL_SMART,
@@ -38,7 +22,7 @@ RULES:
 """,
     sub_agents=[
         chat_summarizer, 
-        chat_observer,
+        canvas_manager,
         maintenance_agent
     ] 
 )

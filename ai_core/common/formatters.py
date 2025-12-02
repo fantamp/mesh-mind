@@ -13,7 +13,25 @@ def format_message_to_string(msg: Any) -> str:
     else:
         timestamp = "Unknown time"
 
-    # Extract author info
+    # Handle CanvasElement
+    if hasattr(msg, 'created_by') and hasattr(msg, 'attributes'):
+        # It's a CanvasElement
+        created_by = getattr(msg, 'created_by', 'unknown')
+        attrs = getattr(msg, 'attributes', {}) or {}
+        
+        name = attrs.get('author_name', '')
+        nick = attrs.get('author_nick', '')
+        # created_by is usually the ID
+        
+        if nick:
+             base = name.strip() if name else ""
+             who = f"{base} (@{nick})".strip() if base else f"@{nick}"
+        else:
+             who = f"{name} ({created_by})".strip() if name else created_by
+             
+        return f"[{timestamp}] {who}: {msg.content}"
+
+    # Extract author info (Legacy Message)
     name = getattr(msg, "author_name", None) or ""
     nick_val = getattr(msg, "author_nick", None)
     nick = nick_val.strip() if isinstance(nick_val, str) and nick_val.strip() else None

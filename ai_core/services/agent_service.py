@@ -11,7 +11,7 @@ from ai_core.common.adk import run_agent_sync, standard_retry
 from ai_core.agents.chat_summarizer.agent import agent as summarizer_agent
 
 from ai_core.agents.orchestrator.agent import agent as orchestrator_agent
-from ai_core.common.models import Document
+from ai_core.common.models import CanvasElement
 
 @standard_retry
 def run_summarizer(chat_id: str, instruction: str = None, user_id: str = "system") -> str:
@@ -47,13 +47,13 @@ def run_summarizer(chat_id: str, instruction: str = None, user_id: str = "system
     )
 
 @standard_retry
-def run_document_summarizer(chat_id: str, documents: List[Document], user_id: str = "system") -> str:
+def run_document_summarizer(chat_id: str, documents: List[CanvasElement], user_id: str = "system") -> str:
     """
     Runs the Summarizer agent to summarize documents for a specific chat.
     
     Args:
         chat_id: The ID of the chat to summarize documents for.
-        documents: List of documents to summarize.
+        documents: List of CanvasElement (type=file/document) to summarize.
         user_id: The ID of the user initiating the request.
         
     Returns:
@@ -64,7 +64,9 @@ def run_document_summarizer(chat_id: str, documents: List[Document], user_id: st
     # Format documents
     formatted_docs = []
     for doc in documents:
-        formatted_docs.append(f"--- Document: {doc.filename} ---\n{doc.content}\n----------------")
+        # Fallback for filename if not in attributes
+        filename = doc.attributes.get('filename', 'Unknown File')
+        formatted_docs.append(f"--- Document: {filename} ---\n{doc.content}\n----------------")
     
     docs_text = "\n".join(formatted_docs)
     

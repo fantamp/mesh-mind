@@ -97,6 +97,16 @@ def main() -> None:
     # Errors
     application.add_error_handler(error_handler)
 
+    # Run DB Migration
+    from ai_core.storage.db import init_db
+    from ai_core.storage.migration import run_migration
+    
+    # Initialize DB (creates new tables)
+    asyncio.run(init_db())
+    
+    # Run migration (moves data from old tables if present)
+    asyncio.run(run_migration())
+
     # Run the bot
     logger.info("Starting Telegram Bot...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
