@@ -10,9 +10,13 @@ __pycache__
 *.pyc
 .pytest_cache/
 
-# Данные
+# DB
 data/*
 !data/.gitkeep
+# wherever they are stored
+*.db
+*.sqlite
+*.sqlite3
 
 # MacOS files
 .DS_Store
@@ -20,7 +24,7 @@ data/*
 # Obsidian
 .obsidian
 
-# временные файлы
+# temporary files
 tmp/
 temp_voice
 .adk
