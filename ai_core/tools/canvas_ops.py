@@ -99,3 +99,46 @@ def set_element_name(element_id: str, name: str) -> str:
             return f"Element named: {updated.name}"
         return "Element not found."
     return run_async(_do())
+
+
+def create_element(
+    chat_id: int,
+    content: str,
+    created_by: str,
+    type: str = "note",
+    attributes: Optional[Dict[str, Any]] = None,
+    frame_id: Optional[str] = None
+) -> str:
+    """
+    Creates a new element on the canvas.
+    
+    Args:
+        chat_id: The ID of the chat (must be an integer).
+        content: The content of the element (cannot be empty).
+        created_by: Short, meaningful name and some ID of the creator (e.g. "canvas_manager", "user:123").
+        type: The type of the element (default: "note").
+        attributes: Optional dictionary of attributes.
+        frame_id: Optional ID of the frame to add the element to.
+    """
+    if not isinstance(chat_id, int):
+        return "Error: chat_id must be an integer."
+        
+    if not content or not content.strip():
+        return "Error: content cannot be empty."
+
+    async def _do():
+        canvas = await canvas_service.get_or_create_canvas_for_chat(str(chat_id))
+        
+        frame_uuid = uuid.UUID(frame_id) if frame_id else None
+        
+        element = await canvas_service.add_element(
+            canvas_id=canvas.id,
+            type=type,
+            content=content,
+            created_by=created_by,
+            attributes=attributes,
+            frame_id=frame_uuid
+        )
+        
+        return f"Element created: {element.id} (Type: {element.type})"
+    return run_async(_do())

@@ -11,21 +11,24 @@ from ai_core.tools.canvas_ops import (
     list_canvas_frames,
     add_element_to_frame,
     remove_element_from_frame,
-    set_element_name
+    set_element_name,
+    create_element
 )
 
 agent = LlmAgent(
     name="canvas_manager",
     model=settings.GEMINI_MODEL_SMART,
     description="Agent responsible for managing and organizing the canvas",
-    instruction="""You are the Canvas Manager.
-Your goal is to help the user organize their thoughts and information on the Canvas.
+    instruction="""You are the Canvas Manager and Observer.
+Your goal is to help the user organize their thoughts and information on the Canvas and observe the canvas.
 
 CAPABILITIES:
 1. **Manage Canvas**: You can rename the current canvas to reflect its topic.
 2. **Manage Frames**: You can create frames (groups) and rename them.
 3. **Organize Elements**: You can add elements (messages, notes) to one or more frames and give them short, descriptive names.
 4. **Search**: You can still search for content using `fetch_elements` to find what needs organizing.
+5. **Observe**: You can observe the canvas and frames to examine the contents.
+6. **Create Elements**: You can create new elements (notes, summaries) directly on the canvas.
 
 HOW TO WORK:
 - When asked to "organize this chat", look at the recent elements, create appropriate frames (e.g., "Ideas", "Questions", "Resources"), and ADD elements into them.
@@ -33,6 +36,7 @@ HOW TO WORK:
 - If an element is important but has no clear name, give it a short summary name.
 - Always check `get_current_canvas_info` or `list_canvas_frames` if you are unsure about the current state.
 - When fetching elements for organization, use `include_details=True` to see existing frames and attributes.
+- When creating elements, provide a meaningful `created_by` name (e.g., "Summarizer", "CanvasManager", or derived from context).
 - Respond in language the user is using.
 
 TERMINOLOGY:
@@ -50,6 +54,8 @@ TOOLS:
 - `add_element_to_frame`: Add an element to a group (can be in multiple).
 - `remove_element_from_frame`: Remove an element from a group.
 - `set_element_name`: Name an element.
+- `set_element_name`: Name an element.
+- `create_element`: Create a new element. You MUST provide `created_by` (e.g. your agent name or context source).
 - `fetch_elements`: Find content (use include_details=True for full info).
 """,
     tools=[
@@ -61,7 +67,8 @@ TOOLS:
         list_canvas_frames,
         add_element_to_frame,
         remove_element_from_frame,
-        set_element_name
+        set_element_name,
+        create_element
     ],
 )
 
