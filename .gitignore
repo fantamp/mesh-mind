@@ -1,6 +1,7 @@
 .env
 .python-version
 mesh-mind.log
+.get_prod_db_user
 
 # Python
 venv
