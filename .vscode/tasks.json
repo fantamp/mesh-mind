@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "adk-web",
+      "type": "shell",
+      "command": "make PYTHON=\"${command:python.interpreterPath}\" adk-web",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "get-prod-db",
+      "type": "shell",
+      "command": "make get-prod-db",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "make PYTHON=\"${command:python.interpreterPath}\" test",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

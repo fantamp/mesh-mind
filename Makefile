@@ -1,8 +1,20 @@
 REMOTE_USER_FILE := .get_prod_db_user
 
+PYTHON ?= python
+
+# If PYTHON is an absolute path (starts with /), derive the binary directory
+ifneq ($(filter /%,$(PYTHON)),)
+	BIN_DIR := $(dir $(PYTHON))
+	ADK := $(BIN_DIR)adk
+	PYTEST := $(BIN_DIR)pytest
+else
+	ADK := adk
+	PYTEST := pytest
+endif
+
 .PHONY: bot
 bot:
-	python -m telegram_bot.main
+	$(PYTHON) -m telegram_bot.main
 
 .PHONY: bot-tmux
 bot-tmux:
@@ -14,11 +26,11 @@ install:
 
 .PHONY: test
 test:
-	pytest
+	$(PYTEST)
 
 .PHONY: adk-web
 adk-web:
-	cd ai_core/agents && PYTHONPATH=$(shell pwd) adk web
+	cd ai_core/agents && PYTHONPATH=$(shell pwd) $(ADK) web
 
 .PHONY: demo
 demo:
