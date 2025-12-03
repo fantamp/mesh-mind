@@ -10,7 +10,6 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from telegram_bot.handlers import (
     start_command,
-    help_command,
     handle_voice_or_text_message,
     error_handler
 )
@@ -89,7 +88,6 @@ def main() -> None:
 
     # Commands
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("help", help_command))
 
     # Messages
     application.add_handler(MessageHandler(filters.TEXT | filters.VOICE & ~filters.COMMAND, handle_voice_or_text_message))

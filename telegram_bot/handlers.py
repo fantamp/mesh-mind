@@ -44,32 +44,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         
     await update.message.reply_html(msg)
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Показать справку по командам бота."""
-    if not is_chat_allowed(update.effective_chat.id):
-        return
-    
-    chat_id = update.effective_chat.id
-    
-    help_text = f"""
-🤖 **Mesh Mind Bot**
-
-Ваш Chat ID: `{chat_id}`
-
-**Что я умею:**
-• 💾 **Сохраняю всё**: Текст и голосовые сообщения (транскрибирую их).
-• 🗣️ **Понимаю обычный язык**: Просто напишите мне что-нибудь, и я отвечу (через оркестратора).
-
-**Команды:**
-• `/start` — Статус бота
-• `/help` — Эта справка
-
-**Для тестирования в ADK Web:**
-Используйте формат: `Context: chat_id={chat_id} Question: ваш вопрос`
-    """.strip()
-    
-    await update.message.reply_text(help_text, parse_mode="Markdown")
-
 
 async def extract_text_from_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> (str, str):
     """Extracts text content and its media type from an incoming message.

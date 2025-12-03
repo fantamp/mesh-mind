@@ -11,7 +11,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from telegram_bot.handlers import (
     start_command,
     handle_voice_or_text_message,
-    help_command,
 )
 
 # --- Fixtures ---
@@ -135,21 +134,3 @@ async def test_handle_voice_message_success(mock_update, mock_context):
         mock_canvas_service.add_element.assert_called_once()
         mock_run_agent_sync.assert_called_once()
 
-# --- help_command Tests ---
-
-@pytest.mark.asyncio
-async def test_help_command(mock_update, mock_context):
-    """Тест команды /help"""
-    with patch("telegram_bot.handlers.is_chat_allowed", return_value=True):
-        await help_command(mock_update, mock_context)
-    
-    # Проверяем что был вызван reply_text с текстом справки
-    mock_update.message.reply_text.assert_called_once()
-    help_text = mock_update.message.reply_text.call_args[0][0]
-    
-    # Проверяем что в справке есть все основные команды
-    assert "/start" in help_text
-    assert "/help" in help_text
-    # Проверяем, что удаленные команды отсутствуют
-    assert "/summary" not in help_text
-    assert "/ask" not in help_text
