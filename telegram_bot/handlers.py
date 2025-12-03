@@ -95,7 +95,10 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
     text, media_type = await extract_text_from_message(update, context)
     user = update.effective_user
     chat = update.effective_chat
+    
+    # Extract Content Author (original author if forward, else current user)
     author_id, author_nick, author_name = extract_author_from_message(update.message)
+    is_fwd = is_forwarded(update.message)
 
     is_message_saved = False
     agent_response = None
@@ -106,19 +109,33 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
         from ai_core.services.canvas_service import canvas_service
         canvas = await canvas_service.get_or_create_canvas_for_chat(str(chat.id))
         
+        # Prepare attributes
+        attrs = {
+            "source": "telegram",
+            "source_msg_id": str(update.message.message_id),
+            "author_name": author_name,
+            "author_nick": author_nick,
+            "media_path": ""
+        }
+        
+        if author_id:
+            attrs["author_id"] = author_id
+            
+        if is_fwd:
+            attrs["is_forward"] = 1
+        
         # Save to canvas
+        # created_by is ALWAYS the user who sent/forwarded the message to the bot
+        # Format: telegram:{id} | {username} | {full_name}
+        parts = [f"telegram:{user.id}", user.username, user.full_name]
+        creator_str = " | ".join([p for p in parts if p])
+        
         await canvas_service.add_element(
             canvas_id=canvas.id,
             type=media_type, # "text" or "voice"
             content=text,
-            created_by=author_id or str(user.id),
-            attributes={
-                "source": "telegram",
-                "source_msg_id": str(update.message.message_id),
-                "author_name": author_name or user.full_name,
-                "author_nick": author_nick or user.username,
-                "media_path": ""
-            }
+            created_by=creator_str,
+            attributes=attrs
         )
         is_message_saved = True
 
