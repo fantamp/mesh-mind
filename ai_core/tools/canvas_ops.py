@@ -1,23 +1,43 @@
 from typing import Optional, List, Dict, Any
 import uuid
-from ai_core.tools.utils import run_async, log_tool_call
+from google.adk.tools import ToolContext
+from ai_core.tools.utils import run_async, log_tool_call, extract_chat_id
 from ai_core.services.canvas_service import canvas_service
+from ai_core.common.models import CanvasFrame, CanvasElement, Canvas
+
+async def _ensure_chat_boundaries(chat_id: Optional[str] = None, element_id: Optional[str] = None, frame_id: Optional[str] = None, frame: Optional[CanvasFrame] = None, element: Optional[CanvasElement] = None, canvas: Optional[Canvas] = None):
+    if chat_id:
+        canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
+    if not canvas:
+        raise ValueError("No canvas found for chat")
+    if element_id:
+        element = await canvas_service.get_element(uuid.UUID(element_id))
+    if frame_id:
+        frame = await canvas_service.get_frame(uuid.UUID(frame_id))
+    if frame:
+        if frame.canvas_id != canvas.id:
+            raise ValueError(f"Frame {frame.id} does not belong to canvas {canvas.id}")
+    if element:
+        if element.canvas_id != canvas.id:
+            raise ValueError(f"Element {element.id} does not belong to canvas {canvas.id}")
 
 @log_tool_call
-def get_current_canvas_info(chat_id: str) -> str:
+def get_current_canvas_info(tool_context: ToolContext) -> str:
     """
     Returns information about the current canvas for the chat.
     """
+    chat_id = extract_chat_id(tool_context)
     async def _do():
         canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
         return f"Canvas ID: {canvas.id}\nName: {canvas.name or 'Unnamed'}"
     return run_async(_do())
 
 @log_tool_call
-def set_canvas_name(chat_id: str, name: str) -> str:
+def set_canvas_name(tool_context: ToolContext, name: str) -> str:
     """
     Sets the name of the current canvas.
     """
+    chat_id = extract_chat_id(tool_context)
     async def _do():
         canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
         updated = await canvas_service.update_canvas(canvas.id, name)
@@ -25,13 +45,11 @@ def set_canvas_name(chat_id: str, name: str) -> str:
     return run_async(_do())
 
 @log_tool_call
-def create_canvas_frame(chat_id: int, name: str, parent_frame_id: Optional[str] = None) -> str:
+def create_canvas_frame(tool_context: ToolContext, name: str, parent_frame_id: Optional[str] = None) -> str:
     """
     Creates a new frame in the current canvas.
-    """
-    
-    if not isinstance(chat_id, int):
-        return "Error: chat_id must be an integer."
+    """    
+    chat_id = extract_chat_id(tool_context)
     
     async def _do():
         canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
@@ -41,12 +59,20 @@ def create_canvas_frame(chat_id: int, name: str, parent_frame_id: Optional[str] 
     return run_async(_do())
 
 @log_tool_call
-def set_frame_name(frame_id: str, name: str) -> str:
+def set_frame_name(frame_id: str, name: str, tool_context: ToolContext) -> str:
     """
     Renames a frame.
     """
+    chat_id = extract_chat_id(tool_context)
+    
     async def _do():
         frame_uuid = uuid.UUID(frame_id)
+
+        frame = await canvas_service.get_frame(frame_uuid)
+        if not frame:
+            return "Frame not found."
+        await _ensure_chat_boundaries(chat_id, frame=frame)
+
         updated = await canvas_service.update_frame(frame_uuid, name)
         if updated:
             return f"Frame renamed to: {updated.name}"
@@ -54,13 +80,12 @@ def set_frame_name(frame_id: str, name: str) -> str:
     return run_async(_do())
 
 @log_tool_call
-def list_canvas_frames(chat_id: int) -> str:
+def list_canvas_frames(tool_context: ToolContext) -> str:
     """
     Lists all frames in the current canvas.
     """
 
-    if not isinstance(chat_id, int):
-        return "Error: chat_id must be an integer."
+    chat_id = extract_chat_id(tool_context)
     
     async def _do():
         canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
@@ -76,13 +101,27 @@ def list_canvas_frames(chat_id: int) -> str:
     return run_async(_do())
 
 @log_tool_call
-def add_element_to_frame(element_id: str, frame_id: str) -> str:
+def add_element_to_frame(element_id: str, frame_id: str, tool_context: ToolContext) -> str:
     """
     Adds an element to a specific frame (an element can be in multiple frames).
     """
+    chat_id = extract_chat_id(tool_context)
+    
     async def _do():
         el_uuid = uuid.UUID(element_id)
         fr_uuid = uuid.UUID(frame_id)
+        canvas = await canvas_service.get_or_create_canvas_for_chat(chat_id)
+
+        element = await canvas_service.get_element(el_uuid)
+        if not element:
+            return "Element not found."
+        
+        frame = await canvas_service.get_frame(fr_uuid)
+        if not frame:
+            return "Frame not found."
+
+        await _ensure_chat_boundaries(canvas=canvas, element=element, frame=frame)
+
         success = await canvas_service.add_element_to_frame(el_uuid, fr_uuid)
         if success:
             return f"Element added to frame {frame_id}"
@@ -90,11 +129,13 @@ def add_element_to_frame(element_id: str, frame_id: str) -> str:
     return run_async(_do())
 
 @log_tool_call
-def remove_element_from_frame(element_id: str, frame_id: str) -> str:
+def remove_element_from_frame(element_id: str, frame_id: str, tool_context: ToolContext) -> str:
     """
     Removes an element from a specific frame.
     """
+    chat_id = extract_chat_id(tool_context)
     async def _do():
+        await _ensure_chat_boundaries(chat_id, element_id=element_id, frame_id=frame_id)
         el_uuid = uuid.UUID(element_id)
         fr_uuid = uuid.UUID(frame_id)
         success = await canvas_service.remove_element_from_frame(el_uuid, fr_uuid)
@@ -104,11 +145,13 @@ def remove_element_from_frame(element_id: str, frame_id: str) -> str:
     return run_async(_do())
 
 @log_tool_call
-def set_element_name(element_id: str, name: str) -> str:
+def set_element_name(element_id: str, name: str, tool_context: ToolContext) -> str:
     """
     Sets a short human-readable name for an element.
     """
+    chat_id = extract_chat_id(tool_context)
     async def _do():
+        await _ensure_chat_boundaries(chat_id, element_id=element_id)
         el_uuid = uuid.UUID(element_id)
         updated = await canvas_service.update_element(el_uuid, name=name)
         if updated:
@@ -119,33 +162,33 @@ def set_element_name(element_id: str, name: str) -> str:
 
 @log_tool_call
 def create_element(
-    chat_id: int,
     content: str,
     created_by: str,
+    tool_context: ToolContext,
     type: str = "note",
     attributes: Optional[Dict[str, Any]] = None,
-    frame_id: Optional[str] = None
+    frame_id: Optional[str] = None,
 ) -> str:
     """
     Creates a new element on the canvas.
     
     Args:
-        chat_id: The ID of the chat (must be an integer).
         content: The content of the element (cannot be empty).
         created_by: Short, meaningful name and some ID of the creator (e.g. "canvas_manager", "user:123").
         type: The type of the element (default: "note").
         attributes: Optional dictionary of attributes.
         frame_id: Optional ID of the frame to add the element to.
     """
-    if not isinstance(chat_id, int):
-        return "Error: chat_id must be an integer."
-        
+    chat_id = extract_chat_id(tool_context)
     if not content or not content.strip():
         return "Error: content cannot be empty."
 
     async def _do():
         canvas = await canvas_service.get_or_create_canvas_for_chat(str(chat_id))
         
+        if frame_id:
+            await _ensure_chat_boundaries(canvas=canvas, frame_id=frame_id)
+
         frame_uuid = uuid.UUID(frame_id) if frame_id else None
         
         element = await canvas_service.add_element(

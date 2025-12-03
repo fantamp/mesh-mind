@@ -1,8 +1,9 @@
 import uuid
 import re
+from google.adk.tools import ToolContext
 from typing import Optional, List, Tuple
 from datetime import datetime, timedelta, timezone
-from ai_core.tools.utils import run_async, log_tool_call
+from ai_core.tools.utils import run_async, log_tool_call, extract_chat_id
 
 # Helper for fuzzy time parsing
 def _parse_time_range(time_str: str) -> Tuple[Optional[datetime], Optional[datetime]]:
@@ -77,7 +78,7 @@ def _parse_time_range(time_str: str) -> Tuple[Optional[datetime], Optional[datet
 
 @log_tool_call
 def fetch_elements(
-    chat_id: int,
+    tool_context: ToolContext,
     limit: int = 10,
     time_range: Optional[str] = None,
     created_by: Optional[str] = None,
@@ -92,7 +93,6 @@ def fetch_elements(
     Returns a JSON string containing a list of element objects.
     
     Args:
-        chat_id: The ID of the chat. It must be an integer.
         limit: Max number of elements to return.
         time_range: Filter elements by time. Supports:
                - Natural language: "yesterday" (full day), "today", "last 3 hours", "20 minutes ago".
@@ -109,7 +109,7 @@ def fetch_elements(
         A JSON string representing a list of elements.
     """
     return run_async(_fetch_elements_impl(
-        chat_id=chat_id,
+        tool_context=tool_context,
         limit=limit,
         time_range=time_range,
         created_by=created_by,
@@ -120,7 +120,7 @@ def fetch_elements(
     ))
 
 async def _fetch_elements_impl(
-    chat_id: int,
+    tool_context: ToolContext,
     limit: int = 10,
     time_range: Optional[str] = None,
     created_by: Optional[str] = None,
@@ -129,8 +129,7 @@ async def _fetch_elements_impl(
     include_details: bool = False,
     frame_id: Optional[str] = None
 ) -> str:
-    if not chat_id or type(chat_id) != int:
-        return "Error: chat_id is required. It must be an integer."
+    chat_id = extract_chat_id(tool_context)
 
     start_dt = None
     end_dt = None

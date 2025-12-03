@@ -115,7 +115,6 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
             "source_msg_id": str(update.message.message_id),
             "author_name": author_name,
             "author_nick": author_nick,
-            "media_path": ""
         }
         
         if author_id:
@@ -145,15 +144,17 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
             preview_text = escaped_text[:MAX_TRANSCRIPTION_PREVIEW_LENGTH] + "..." if len(escaped_text) > MAX_TRANSCRIPTION_PREVIEW_LENGTH else escaped_text
             reply.append(f"<blockquote><i>{preview_text}</i></blockquote>")
 
-        if not is_forwarded(update.message):
-            contexted_text = f"Context: chat_id={chat.id}\nMedia type: {media_type}\nUser message in the group Telegram chat:\n\n{text}"
-            agent_response = await asyncio.to_thread(
-                run_agent_sync,
-                agent=orchestrator,
-                user_message=contexted_text,
-                user_id=str(user.id),
-                session_id=str(chat.id)
-            )
+        ctx = attrs.copy()
+        ctx["media_type"] = media_type
+        ctx["added_by"] = creator_str
+        contexted_text = f"{'\n'.join([f'{k}: {v}' for k, v in ctx.items()])}\n\nMessage:\n\n{text}"
+        agent_response = await asyncio.to_thread(
+            run_agent_sync,
+            agent=orchestrator,
+            user_message=contexted_text,
+            user_id=str(user.id),
+            chat_id=str(chat.id)
+        )
         
     except Exception as e:
         logger.error(f"Got an error: {e}")

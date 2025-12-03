@@ -1,6 +1,8 @@
 import asyncio
 import functools
 import logging
+import os
+from google.adk.tools import ToolContext
 from typing import TypeVar, Coroutine, Any, Callable
 
 from concurrent.futures import ThreadPoolExecutor
@@ -59,3 +61,13 @@ def run_async(coro: Coroutine[Any, Any, T]) -> T:
             return future.result()
     else:
         return asyncio.run(coro)
+
+
+def extract_chat_id(tool_context: ToolContext) -> int:
+    chat_id = tool_context.state.get("chat_id")
+    
+    if not chat_id:
+        chat_id = os.getenv("CHAT_ID")
+    if not chat_id:
+        raise ValueError("Access denied: Chat ID not found in tool context state or environment variables")
+    return int(chat_id)

@@ -67,8 +67,8 @@ standard_retry = retry(
 def run_agent_sync(
     agent: LlmAgent,
     user_message: str,
+    chat_id: str,
     user_id: str = "default_user",
-    session_id: Optional[str] = None,
     app_name: str = "agents"
 ) -> str:
     """
@@ -78,7 +78,7 @@ def run_agent_sync(
         agent: The LlmAgent instance to run.
         user_message: The text message to send to the agent.
         user_id: User identifier for the session.
-        session_id: Optional session ID. If None, a new UUID is generated.
+        chat_id: Optional chat ID
         app_name: App name for the session.
         
     Returns:
@@ -87,10 +87,7 @@ def run_agent_sync(
     Raises:
         Exception: If the agent fails to return a response or other errors occur.
     """
-    if session_id is None:
-        session_id = str(uuid.uuid4())
-        
-    logger.debug(f"Running agent {agent.name} for user {user_id} (session {session_id})")
+    logger.debug(f"Running agent {agent.name} for user {user_id} (session {chat_id})")
 
     # Create runner
     runner = Runner(
@@ -104,24 +101,28 @@ def run_agent_sync(
     def create_session_task():
         # Проверяем существование сессии
         try:
-            existing_session = asyncio.run(_session_service.get_session(
+            session = asyncio.run(_session_service.get_session(
                 app_name=app_name,
                 user_id=user_id,
-                session_id=session_id
+                session_id=chat_id
             ))
-            if existing_session:
-                logger.debug(f"Reusing existing session {session_id}")
+            if session:
+                logger.debug(f"Reusing existing session_id={chat_id}, state={session.state}")
                 return
         except Exception:
             # Сессия не существует, создаём новую
             pass
             
-        asyncio.run(_session_service.create_session(
+        session = asyncio.run(_session_service.create_session(
             app_name=app_name,
             user_id=user_id,
-            session_id=session_id
+            session_id=chat_id,
+            state={
+                "chat_id": chat_id
+            }
         ))
-        logger.debug(f"Created new session {session_id}")
+        logger.debug(f"Created new session_id={chat_id}, state={session.state}")
+        
 
     try:
         try:
@@ -132,11 +133,10 @@ def run_agent_sync(
         if loop and loop.is_running():
             logger.debug("Event loop running, using ThreadPoolExecutor for session creation")
             with ThreadPoolExecutor() as executor:
-                executor.submit(create_session_task).result()
+                session = executor.submit(create_session_task).result()
         else:
             logger.debug("No event loop, running session creation directly")
-            create_session_task()
-            
+            session = create_session_task()            
     except Exception as e:
         logger.error(f"Failed to handle session: {e}")
         raise
@@ -154,7 +154,7 @@ def run_agent_sync(
     try:
         for event in runner.run(
             user_id=user_id,
-            session_id=session_id,
+            session_id=chat_id,
             new_message=user_content
         ):
             if event.is_final_response() and event.content and event.content.parts:

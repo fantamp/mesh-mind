@@ -39,7 +39,7 @@ class CanvasService:
                 raise ValueError(f"Canvas not found for chat_id: {chat_id}")
 
             new_canvas = Canvas(
-                name=f"Chat {chat_id}",
+                name=f"Canvas for chat_id={chat_id}",
                 access_rules=[auth_key]
             )
             session.add(new_canvas)
@@ -85,6 +85,14 @@ class CanvasService:
                 # Refresh to get updated state if needed, though link is separate
                 
             return element
+
+    async def get_element(self, element_id: uuid.UUID) -> Optional[CanvasElement]:
+        """Retrieves a single element by ID."""
+        async with async_session() as session:
+            # Eagerly load frames to avoid DetachedInstanceError
+            statement = select(CanvasElement).where(CanvasElement.id == element_id).options(selectinload(CanvasElement.frames))
+            result = await session.execute(statement)
+            return result.scalars().first()
 
     async def get_elements(
         self,
@@ -171,6 +179,13 @@ class CanvasService:
             await session.commit()
             await session.refresh(canvas)
             return canvas
+
+
+
+    async def get_frame(self, frame_id: uuid.UUID) -> Optional[CanvasFrame]:
+        """Retrieves a single frame by ID."""
+        async with async_session() as session:
+            return await session.get(CanvasFrame, frame_id)
 
     async def get_frames(self, canvas_id: uuid.UUID) -> List[CanvasFrame]:
         """Returns all frames for a canvas."""

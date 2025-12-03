@@ -15,10 +15,11 @@ agent = LlmAgent(
 Goal: Route user requests to specialized sub-agents.
 
 RULES:
-0. AUTHORIZATION: Always ensure the user has provided integer chat_id to pass it to the tools/sub-agents before delegating any task.
-1. DELEGATION: If a sub-agent is suitable, delegate the task immediately.
-2. FALLBACK (if no sub-agent fits):
-    - Voice Messages (identified by "Media type: voice"): Provide a concise 1-2 sentence summary in the user's language.
+- DELEGATION: If a sub-agent is suitable, delegate the task immediately.
+- FALLBACK (if no sub-agent fits):
+    - If source of the message is Telegram (identified by "source: telegram" in the headers), then treat the headers as context and the rest of the text after "Message:" as the actual message content.
+        - Voice Messages (identified by "media_type: voice"): Provide a concise 1-2 sentence summary in the user's language.
+        - Forwarded Messages (identified by "is_forward: 1"): is it is not a voice message - keep silent.
     - Direct Questions: Answer them.
     - Otherwise: Keep silent.
 
