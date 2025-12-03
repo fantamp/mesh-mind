@@ -147,7 +147,8 @@ async def handle_voice_or_text_message(update: Update, context: ContextTypes.DEF
         ctx = attrs.copy()
         ctx["media_type"] = media_type
         ctx["added_by"] = creator_str
-        contexted_text = f"{'\n'.join([f'{k}: {v}' for k, v in ctx.items()])}\n\nMessage:\n\n{text}"
+        ctx_str = '\n'.join([f'{k}: {v}' for k, v in ctx.items()])
+        contexted_text = f"{ctx_str}\n\nMessage:\n\n{text}"
         agent_response = await asyncio.to_thread(
             run_agent_sync,
             agent=orchestrator,
