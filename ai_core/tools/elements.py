@@ -198,8 +198,8 @@ async def _fetch_elements_impl(
         # Filter: author (substring in attributes.author_name or author_nick)
         if author:
             attrs = el.attributes or {}
-            a_name = attrs.get('author_name', '')
-            a_nick = attrs.get('author_nick', '')
+            a_name = attrs.get('author_name') or ''
+            a_nick = attrs.get('author_nick') or ''
             
             if author.lower() not in a_name.lower() and author.lower() not in a_nick.lower():
                 continue
