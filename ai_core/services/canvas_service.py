@@ -209,9 +209,13 @@ class CanvasService:
     async def update_element(
         self, 
         element_id: uuid.UUID, 
-        name: Optional[str] = None
+        name: Optional[str] = None,
+        content: Optional[str] = None,
+        type: Optional[str] = None,
+        attributes: Optional[dict] = None,
+        attributes_to_remove: Optional[List[str]] = None
     ) -> Optional[CanvasElement]:
-        """Updates element name."""
+        """Updates element properties."""
         async with async_session() as session:
             element = await session.get(CanvasElement, element_id)
             if not element:
@@ -219,6 +223,27 @@ class CanvasService:
             
             if name is not None:
                 element.name = name
+            
+            if content is not None:
+                element.content = content
+                
+            if type is not None:
+                element.type = type
+                
+            if attributes or attributes_to_remove:
+                # Create a copy of existing attributes to modify
+                # Note: SQLModel/SQLAlchemy JSON mutation tracking can be tricky, 
+                # so it's safer to replace the dict or flag modified.
+                new_attrs = dict(element.attributes) if element.attributes else {}
+                
+                if attributes:
+                    new_attrs.update(attributes)
+                    
+                if attributes_to_remove:
+                    for key in attributes_to_remove:
+                        new_attrs.pop(key, None)
+                        
+                element.attributes = new_attrs
                 
             session.add(element)
             await session.commit()

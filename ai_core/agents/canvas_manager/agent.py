@@ -14,6 +14,7 @@ from ai_core.tools.canvas_ops import (
     set_element_name,
     create_element,
     set_canvas_name,
+    edit_element,
 )
 
 def create_agent():
@@ -36,6 +37,7 @@ def create_agent():
     - remove_element_from_frame: Remove an element from a frame
     - set_element_name: Set the name of an element
     - create_element: Create a new element
+    - edit_element: Edit an existing element (content, type, attributes)
     - get_current_canvas_info: Get information about the current canvas
     - set_canvas_name: Set the name of the current canvas
 - When asked to show contents of a frame or list of frames, present results by default as a numberedlist, with each item contents summarized to 1-2 sentences.
@@ -54,6 +56,7 @@ def create_agent():
             remove_element_from_frame,
             set_element_name,
             create_element,
+            edit_element,
             get_current_canvas_info,
             set_canvas_name,
         ],

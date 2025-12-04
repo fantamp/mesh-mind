@@ -202,3 +202,46 @@ def create_element(
         
         return f"Element created: {element.id} (Type: {element.type})"
     return run_async(_do())
+
+@log_tool_call
+def edit_element(
+    element_id: str,
+    tool_context: ToolContext,
+    name: Optional[str] = None,
+    content: Optional[str] = None,
+    type: Optional[str] = None,
+    attributes_to_set: Optional[Dict[str, Any]] = None,
+    attributes_to_remove: Optional[List[str]] = None,
+) -> str:
+    """
+    Edits an existing element on the canvas.
+    
+    Args:
+        element_id: The ID of the element to edit.
+        name: New name for the element.
+        content: New content for the element.
+        type: New type for the element.
+        attributes_to_set: Dictionary of attributes to set or update.
+        attributes_to_remove: List of attribute keys to remove.
+    """
+    chat_id = extract_chat_id(tool_context)
+    
+    async def _do():
+        # Validate ownership
+        await _ensure_chat_boundaries(chat_id, element_id=element_id)
+        
+        el_uuid = uuid.UUID(element_id)
+        
+        updated = await canvas_service.update_element(
+            element_id=el_uuid,
+            name=name,
+            content=content,
+            type=type,
+            attributes=attributes_to_set,
+            attributes_to_remove=attributes_to_remove
+        )
+        
+        if updated:
+            return f"Element updated: {updated.id}"
+        return "Element not found."
+    return run_async(_do())
