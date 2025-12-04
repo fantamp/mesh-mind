@@ -12,13 +12,14 @@ async def test_send_safe_message():
     # Mock Update and Message
     mock_update = MagicMock(spec=Update)
     mock_message = AsyncMock()
+    mock_message.message_id = 12345
     mock_update.message = mock_message
     
     # Test 1: Normal short message
     print("Test 1: Normal short message")
     mock_message.reset_mock()
     await send_safe_message(mock_update, "Hello World")
-    mock_message.reply_text.assert_called_with("Hello World", parse_mode="Markdown")
+    mock_message.reply_text.assert_called_with("Hello World", parse_mode="Markdown", reply_to_message_id=12345)
     print("PASS")
     
     # Test 2: Long message truncation
@@ -31,6 +32,7 @@ async def test_send_safe_message():
     assert len(sent_text) <= 4096
     assert "(Response truncated due to length limit)" in sent_text
     assert kwargs["parse_mode"] == "Markdown"
+    assert kwargs["reply_to_message_id"] == 12345
     print("PASS")
     
     # Test 3: Fallback on BadRequest
@@ -47,11 +49,13 @@ async def test_send_safe_message():
     args1, kwargs1 = mock_message.reply_text.call_args_list[0]
     assert args1[0] == "Bad_Markdown_Text"
     assert kwargs1["parse_mode"] == "Markdown"
+    assert kwargs1["reply_to_message_id"] == 12345
     
     # Second call without markdown (fallback)
     args2, kwargs2 = mock_message.reply_text.call_args_list[1]
     assert args2[0] == "Bad_Markdown_Text"
     assert "parse_mode" not in kwargs2 or kwargs2["parse_mode"] is None
+    assert kwargs2["reply_to_message_id"] == 12345
     print("PASS")
 
 if __name__ == "__main__":

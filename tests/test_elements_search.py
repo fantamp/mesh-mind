@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import sys
 import os
+from google.adk.tools import ToolContext
 
 # Add project root to path
 sys.path.append(os.getcwd())
@@ -21,6 +22,11 @@ class MockElement:
         self.attributes = attributes or {}
         self.frames = frames or []
         self.canvas_id = canvas_id or "canvas1"
+
+def create_mock_tool_context(chat_id: int) -> ToolContext:
+    context = MagicMock(spec=ToolContext)
+    context.state = {"chat_id": chat_id}
+    return context
 
 class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
     
@@ -104,14 +110,15 @@ class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
             mock_service.get_elements = AsyncMock(return_value=self.elements)
             
             # Search for "user:123" (Alice and file)
-            res_json = await _fetch_elements_impl(chat_id=1, created_by="user:123")
+            tool_context = create_mock_tool_context(1)
+            res_json = await _fetch_elements_impl(tool_context=tool_context, created_by="user:123")
             res = json.loads(res_json)
             self.assertEqual(len(res), 2)
             ids = sorted([r['id'] for r in res])
             self.assertEqual(ids, ["1", "5"])
             
             # Case insensitive "ADMIN"
-            res_json = await _fetch_elements_impl(chat_id=1, created_by="ADMIN")
+            res_json = await _fetch_elements_impl(tool_context=tool_context, created_by="ADMIN")
             res = json.loads(res_json)
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0]['id'], "3")
@@ -122,13 +129,14 @@ class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
             mock_service.get_elements = AsyncMock(return_value=self.elements)
             
             # Search for "Alice" (author_name)
-            res_json = await _fetch_elements_impl(chat_id=1, author="Alice")
+            tool_context = create_mock_tool_context(1)
+            res_json = await _fetch_elements_impl(tool_context=tool_context, author="Alice")
             res = json.loads(res_json)
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0]['id'], "1")
             
             # Search for "Bob" (author_nick)
-            res_json = await _fetch_elements_impl(chat_id=1, author="bob")
+            res_json = await _fetch_elements_impl(tool_context=tool_context, author="bob")
             res = json.loads(res_json)
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0]['id'], "2")
@@ -139,13 +147,14 @@ class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
             mock_service.get_elements = AsyncMock(return_value=self.elements)
             
             # Search for "project" (in note)
-            res_json = await _fetch_elements_impl(chat_id=1, contains="project")
+            tool_context = create_mock_tool_context(1)
+            res_json = await _fetch_elements_impl(tool_context=tool_context, contains="project")
             res = json.loads(res_json)
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0]['id'], "3")
             
             # Search for "Reply"
-            res_json = await _fetch_elements_impl(chat_id=1, contains="reply")
+            res_json = await _fetch_elements_impl(tool_context=tool_context, contains="reply")
             res = json.loads(res_json)
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0]['id'], "4")
@@ -167,7 +176,8 @@ class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
             
             # Search "yesterday" (should find element 3 only)
             # Element 5 is day before yesterday. Elements 1,2,4 are today.
-            res_json = await _fetch_elements_impl(chat_id=1, time_range="yesterday")
+            tool_context = create_mock_tool_context(1)
+            res_json = await _fetch_elements_impl(tool_context=tool_context, time_range="yesterday")
             res = json.loads(res_json)
             
             # Verify service was called with correct start time
@@ -186,7 +196,7 @@ class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(res[0]['id'], "3")
             
             # Search "today" (should find 1, 2, 4)
-            res_json = await _fetch_elements_impl(chat_id=1, time_range="today")
+            res_json = await _fetch_elements_impl(tool_context=tool_context, time_range="today")
             res = json.loads(res_json)
             self.assertEqual(len(res), 3)
             ids = sorted([r['id'] for r in res])
@@ -208,7 +218,8 @@ class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
             
             # Search "today" AND created_by "user:123" -> Should be element 1 only
             # Element 5 is user:123 but not today.
-            res_json = await _fetch_elements_impl(chat_id=1, time_range="today", created_by="user:123")
+            tool_context = create_mock_tool_context(1)
+            res_json = await _fetch_elements_impl(tool_context=tool_context, time_range="today", created_by="user:123")
             res = json.loads(res_json)
             self.assertEqual(len(res), 1)
             self.assertEqual(res[0]['id'], "1")
@@ -221,7 +232,8 @@ class TestFetchElementsSearch(unittest.IsolatedAsyncioTestCase):
             # Limit 2. Should return last 2 sorted by time.
             # Sorted order: 5 (oldest), 3, 4, 2, 1 (newest)
             # Last 2: 2, 1
-            res_json = await _fetch_elements_impl(chat_id=1, limit=2)
+            tool_context = create_mock_tool_context(1)
+            res_json = await _fetch_elements_impl(tool_context=tool_context, limit=2)
             res = json.loads(res_json)
             self.assertEqual(len(res), 2)
             ids = [r['id'] for r in res]

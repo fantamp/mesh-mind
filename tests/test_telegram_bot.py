@@ -71,7 +71,11 @@ async def test_handle_text_message_success(mock_update, mock_context):
         
         # Setup mock returns
         mock_canvas_service.get_or_create_canvas_for_chat = AsyncMock(return_value=mock_canvas)
-        mock_canvas_service.add_element = AsyncMock()
+        
+        mock_element = MagicMock()
+        mock_element.content = "Hello world"
+        mock_element.attributes = {}
+        mock_canvas_service.add_element = AsyncMock(return_value=mock_element)
         
         # Mock run_agent_sync to return a response
         mock_run_agent_sync.return_value = "Orchestrator reply"
@@ -122,7 +126,11 @@ async def test_handle_voice_message_success(mock_update, mock_context):
         
         # Setup mock returns
         mock_canvas_service.get_or_create_canvas_for_chat = AsyncMock(return_value=mock_canvas)
-        mock_canvas_service.add_element = AsyncMock()
+        
+        mock_element = MagicMock()
+        mock_element.content = "transcribed text"
+        mock_element.attributes = {}
+        mock_canvas_service.add_element = AsyncMock(return_value=mock_element)
         
         mock_run_agent_sync.return_value = "Orchestrator reply"
 

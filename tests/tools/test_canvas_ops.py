@@ -2,6 +2,12 @@ import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 import uuid
 from ai_core.common.models import CanvasElement
+from google.adk.tools import ToolContext
+
+def create_mock_tool_context(chat_id: int) -> ToolContext:
+    context = MagicMock(spec=ToolContext)
+    context.state = {"chat_id": chat_id}
+    return context
 
 @pytest.mark.asyncio
 async def test_create_element():
@@ -20,8 +26,9 @@ async def test_create_element():
         mock_service.add_element.return_value = mock_element
         
         # Test execution
+        tool_context = create_mock_tool_context(123)
         result = create_element(
-            chat_id=123,
+            tool_context=tool_context,
             content="Test note",
             created_by="tester",
             type="note",
@@ -57,9 +64,14 @@ async def test_create_element_with_frame():
         mock_service.add_element.return_value = mock_element
         
         frame_id = str(uuid.uuid4())
+        mock_frame = MagicMock()
+        mock_frame.id = uuid.UUID(frame_id)
+        mock_frame.canvas_id = mock_canvas.id
+        mock_service.get_frame.return_value = mock_frame
         
+        tool_context = create_mock_tool_context(123)
         result = create_element(
-            chat_id=123,
+            tool_context=tool_context,
             content="Test note in frame",
             created_by="tester",
             frame_id=frame_id
@@ -74,24 +86,17 @@ async def test_create_element_with_frame():
 async def test_create_element_validation():
     from ai_core.tools.canvas_ops import create_element
     
-    # Test invalid chat_id
-    result = create_element(
-        chat_id="not_an_int",
-        content="content",
-        created_by="tester"
-    )
-    assert "Error: chat_id must be an integer" in result
-    
     # Test empty content
+    tool_context = create_mock_tool_context(123)
     result = create_element(
-        chat_id=123,
+        tool_context=tool_context,
         content="",
         created_by="tester"
     )
     assert "Error: content cannot be empty" in result
     
     result = create_element(
-        chat_id=123,
+        tool_context=tool_context,
         content="   ",
         created_by="tester"
     )

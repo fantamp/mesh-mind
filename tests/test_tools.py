@@ -2,8 +2,15 @@ import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime, timezone
 import uuid
+import os
 from ai_core.common.models import CanvasElement
 from ai_core.tools.elements import fetch_elements, _fetch_elements_impl
+from google.adk.tools import ToolContext
+
+def create_mock_tool_context(chat_id: int) -> ToolContext:
+    context = MagicMock(spec=ToolContext)
+    context.state = {"chat_id": chat_id}
+    return context
 
 @pytest.fixture
 def mock_run_async():
@@ -45,34 +52,49 @@ async def test_fetch_elements_filters():
         mock_service.get_frames = AsyncMock(return_value=[mock_frame])
 
         # Test 1: Basic call
-        result = await _fetch_elements_impl(chat_id=123, limit=10)
+        tool_context = create_mock_tool_context(123)
+        result = await _fetch_elements_impl(tool_context=tool_context, limit=10)
         assert "Hello" in result
         mock_service.get_elements.assert_called_with(
             canvas_id=mock_canvas.id,
-            limit=10,
+            limit=100, # fetch_limit is max(limit * 5, 100)
             since=None,
             frame_id=None
         )
 
         # Test 2: With frame_id (Valid)
-        result = await _fetch_elements_impl(chat_id=123, frame_id=str(frame_uuid))
+        result = await _fetch_elements_impl(tool_context=tool_context, frame_id=str(frame_uuid))
         assert "Hello" in result
         mock_service.get_elements.assert_called_with(
             canvas_id=mock_canvas.id,
-            limit=10,
+            limit=100,
             since=None,
             frame_id=frame_uuid
         )
         
         # Test 3: With frame_id (Invalid - Not in chat)
         other_frame_uuid = uuid.uuid4()
-        result = await _fetch_elements_impl(chat_id=123, frame_id=str(other_frame_uuid))
+        result = await _fetch_elements_impl(tool_context=tool_context, frame_id=str(other_frame_uuid))
         assert "Error: Frame not found in this chat" in result
     
 def test_fetch_elements_invalid_date():
-    result = fetch_elements(chat_id=123, since="invalid-date")
-    assert "Error: Invalid date format" in result
+    tool_context = create_mock_tool_context(123)
+    result = fetch_elements(tool_context=tool_context, time_range="invalid-date")
+    assert "Error: Invalid format for 'time_range'" in result
 
 def test_fetch_elements_missing_chat_id():
-    result = fetch_elements(chat_id=None)
-    assert "Error: chat_id is required" in result
+    # If chat_id is missing from context, extract_chat_id should raise ValueError
+    # But fetch_elements wraps it in run_async which might propagate the error or handle it.
+    # Looking at extract_chat_id, it raises ValueError.
+    # fetch_elements calls run_async(_fetch_elements_impl).
+    # _fetch_elements_impl calls extract_chat_id first thing.
+    # If extract_chat_id raises, the tool call raises.
+    # So we should expect an exception.
+    
+    context = MagicMock(spec=ToolContext)
+    context.state = {}
+    
+    # We need to ensure os.getenv("CHAT_ID") is also empty or mocked.
+    with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(ValueError, match="Access denied: Chat ID not found"):
+             fetch_elements(tool_context=context)
