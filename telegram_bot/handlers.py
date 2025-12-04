@@ -144,7 +144,6 @@ async def process_message_content(
         elif media_type == "image":
             snippet = element.content[:200] + "..." if len(element.content) > 200 else element.content
             reply.append(f"🖼 <b>Image Saved</b>\n\n{html.escape(snippet)}")
-        reply.append("Message saved.")
             
         if reply:
             await update.message.reply_html("\n".join(reply), reply_to_message_id=update.message.message_id)
