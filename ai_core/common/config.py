@@ -13,6 +13,10 @@ class Settings(BaseSettings):
         return os.path.join(self.PROJECT_ROOT, "data/db/mesh_mind.db")
 
     @property
+    def SESSION_DB_PATH(self) -> str:
+        return os.path.join(self.PROJECT_ROOT, "data/db/mesh_mind_sessions.db")
+
+    @property
     def MEDIA_PATH(self) -> str:
         return os.path.join(self.PROJECT_ROOT, "data/media")
 

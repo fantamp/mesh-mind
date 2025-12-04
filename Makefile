@@ -69,4 +69,4 @@ get-prod-db:
 	if [ "$$SHOULD_SAVE" = "1" ]; then \
 		echo "$$REMOTE_USER" > $$REMOTE_USER_FILE; \
 	fi; \
-	ssh vp "sudo -u $$REMOTE_USER tar -C /home/$$REMOTE_USER/mesh-mind/data/db -cf - mesh_mind.db" | tar -C ./data/db -xf -
+	ssh vp "sudo -u $$REMOTE_USER tar -C /home/$$REMOTE_USER/mesh-mind/data/db -cf - mesh_mind.db mesh_mind_sessions.db" | tar -C ./data/db -xf -
