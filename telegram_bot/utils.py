@@ -112,12 +112,12 @@ async def send_safe_message(update: Update, text: str, parse_mode: str = "Markdo
         text = text[:MAX_LENGTH] + "\n\n(Response truncated due to length limit)"
         
     try:
-        await update.message.reply_text(text, parse_mode=parse_mode)
+        await update.message.reply_text(text, parse_mode=parse_mode, reply_to_message_id=update.message.message_id)
     except BadRequest as e:
         logger.warning(f"Failed to send message with parse_mode={parse_mode}: {e}. Falling back to plain text.")
         try:
             # Fallback: try sending without parse_mode (plain text)
-            await update.message.reply_text(text)
+            await update.message.reply_text(text, reply_to_message_id=update.message.message_id)
         except Exception as e2:
             logger.error(f"Failed to send message even as plain text: {e2}")
-            await update.message.reply_text("Error: Could not send response.")
+            await update.message.reply_text("Error: Could not send response.", reply_to_message_id=update.message.message_id)

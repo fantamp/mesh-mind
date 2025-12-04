@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     @property
     def DOCS_PATH(self) -> str:
         return os.path.join(self.PROJECT_ROOT, "data/docs")
+
+    @property
+    def IMAGES_PATH(self) -> str:
+        return os.path.join(self.PROJECT_ROOT, "data/images")
     
     # API Keys
     GOOGLE_API_KEY: str
@@ -35,10 +39,6 @@ class Settings(BaseSettings):
     # Company
     COMPANY_DOMAINS: List[str] = []
     
-    SUMMARY_DEFAULT_LIMIT: int = 50  # Дефолтное количество сообщений для саммари (если не указано)
-    
-    BOT_SILENT_MODE: bool = False  # Если True, бот не отправляет подтверждения о сохранении
-
     model_config = SettingsConfigDict(
         env_file=os.path.join(PROJECT_ROOT, ".env"),
         env_file_encoding="utf-8",

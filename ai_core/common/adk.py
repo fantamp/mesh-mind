@@ -141,9 +141,6 @@ def run_agent_sync(
                 response_text = event.content.parts[0].text
                 break
                 
-        if not response_text:
-            raise Exception("Agent did not return a final text response")
-            
         return response_text
         
     except Exception as e:

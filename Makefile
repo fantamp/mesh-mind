@@ -26,6 +26,10 @@ install:
 
 .PHONY: test
 test:
+	$(PYTEST) --ignore=tests/integration
+
+.PHONY: heavy-tests
+heavy-tests:
 	$(PYTEST)
 
 .PHONY: adk-web

@@ -54,7 +54,8 @@ class CanvasService:
         content: str,
         created_by: str,
         attributes: dict = None,
-        frame_id: Optional[uuid.UUID] = None
+        frame_id: Optional[uuid.UUID] = None,
+        element_id: Optional[uuid.UUID] = None
     ) -> CanvasElement:
         """
         Adds a new element to the canvas.
@@ -66,6 +67,7 @@ class CanvasService:
         attributes['created_by'] = created_by
             
         element = CanvasElement(
+            id=element_id if element_id else uuid.uuid4(),
             canvas_id=canvas_id,
             # frame_id=frame_id, # REMOVED
             type=type,
