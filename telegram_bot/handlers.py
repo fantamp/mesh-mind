@@ -85,6 +85,8 @@ async def extract_text_from_message(update: Update, context: ContextTypes.DEFAUL
         return transcription, "voice"
     elif update.message.text:
         return update.message.text, "text"
+    elif update.message.caption:
+        return update.message.caption, "text"
     raise Exception("unknown message type")
 
 
@@ -231,3 +233,30 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
+
+
+async def handle_unhandled_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log messages that were not handled by other handlers."""
+    if not update.effective_chat:
+        return
+        
+    chat_id = update.effective_chat.id
+    if not is_chat_allowed(chat_id):
+        return
+
+    user = update.effective_user
+    user_info = f"{user.id} ({user.username})" if user else "Unknown"
+    
+    # Try to identify what it is
+    msg_type = "Unknown"
+    if update.message:
+        if update.message.sticker: msg_type = "Sticker"
+        elif update.message.animation: msg_type = "Animation"
+        elif update.message.video: msg_type = "Video"
+        elif update.message.video_note: msg_type = "VideoNote"
+        elif update.message.contact: msg_type = "Contact"
+        elif update.message.location: msg_type = "Location"
+        elif update.message.poll: msg_type = "Poll"
+        else: msg_type = "Other"
+    
+    logger.info(f"IGNORED MESSAGE | Chat: {chat_id} | User: {user_info} | Type: {msg_type} | Update ID: {update.update_id}")

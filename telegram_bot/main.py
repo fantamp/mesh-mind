@@ -12,7 +12,8 @@ from telegram_bot.handlers import (
     start_command,
     handle_voice_or_text_message,
     handle_photo_message,
-    error_handler
+    error_handler,
+    handle_unhandled_message
 )
 import asyncio
 from telegram_bot.utils import ALLOWED_CHAT_IDS
@@ -91,8 +92,11 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start_command))
 
     # Messages
-    application.add_handler(MessageHandler(filters.TEXT | filters.VOICE & ~filters.COMMAND, handle_voice_or_text_message))
+    application.add_handler(MessageHandler((filters.TEXT | filters.VOICE | filters.CAPTION) & ~filters.COMMAND, handle_voice_or_text_message))
     application.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle_photo_message))
+    
+    # Catch-all for unhandled messages
+    application.add_handler(MessageHandler(filters.ALL, handle_unhandled_message))
 
     # Errors
     application.add_error_handler(error_handler)
